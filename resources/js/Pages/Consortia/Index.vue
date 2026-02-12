@@ -2,15 +2,15 @@
 import { ref, watch } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import Swal from 'sweetalert2';
 import { Pencil, Trash2, Contact, Plus, Briefcase } from 'lucide-vue-next';
+import Swal from 'sweetalert2';
 
 // Componentes
 import TableFilters from '@/Components/TableFilters.vue';
 import Pagination from '@/Components/Pagination.vue';
 import EmptyState from '@/Components/EmptyState.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import ConsortiumDrawer from './Partials/ConsortiumDrawer.vue'; // Cambiado de Modal a Drawer
+import ConsortiumDrawer from './Partials/ConsortiumDrawer.vue';
 import ConsortiumDetailModal from './Partials/ConsortiumDetailModal.vue';
 
 const props = defineProps({
@@ -19,7 +19,7 @@ const props = defineProps({
     filters: Object
 });
 
-// --- ESTADOS ---
+// --- 1. ESTADOS ---
 const isDrawerOpen = ref(false);
 const isDetailModalOpen = ref(false);
 const editMode = ref(false);
@@ -27,14 +27,20 @@ const selectedConsortium = ref(null);
 const search = ref(props.filters.search || '');
 const perPage = ref(props.filters.perPage || '10');
 
+// --- 2. FORMULARIO ---
 const form = useForm({
-    id: null, ruc: '', name: '', url_logo: null,
-    legal_representative: '', representative_dni: '',
-    representative_email: '', representative_phone: '',
-    selected_companies: [] // Estructura para consorciados
+    id: null,
+    ruc: '',
+    name: '',
+    url_logo: null,
+    legal_representative: '',
+    representative_dni: '',
+    representative_email: '',
+    representative_phone: '',
+    selected_companies: [] // Socios y porcentajes
 });
 
-// --- LÓGICA DE NAVEGACIÓN Y FILTROS ---
+// --- 3. WATCHERS (NAVEGACIÓN) ---
 watch([search, perPage], () => {
     router.get(route('consortia.index'),
         { search: search.value, perPage: perPage.value },
@@ -42,12 +48,15 @@ watch([search, perPage], () => {
     );
 });
 
-// --- ACCIONES ---
+// --- 4. ACCIONES ---
+
+/** Abre el Drawer para crear o editar consorcio */
 const openDrawer = (consortium = null) => {
     editMode.value = !!consortium;
     form.clearErrors();
 
     if (consortium) {
+        // Carga de datos para edición
         form.id = consortium.id;
         form.ruc = consortium.ruc;
         form.name = consortium.name;
@@ -57,38 +66,48 @@ const openDrawer = (consortium = null) => {
         form.representative_email = consortium.representative_email;
         form.representative_phone = consortium.representative_phone;
 
-        // Mapeo senior de relación pivote
+        // Mapeo de socios (relación Many-to-Many con pivote)
         form.selected_companies = consortium.companies ? consortium.companies.map(c => ({
             company_id: c.id,
             percentage: c.pivot.participation_percentage || c.pivot.percentage
         })) : [];
     } else {
+        // Reset para nuevo registro
         form.reset();
         form.selected_companies = [];
     }
     isDrawerOpen.value = true;
 };
 
+/** Muestra modal con detalles de contacto */
 const showContact = (consortium) => {
     selectedConsortium.value = consortium;
     isDetailModalOpen.value = true;
 };
 
+/** Envío de datos al servidor */
 const handleSubmit = () => {
     const url = editMode.value ? route('consortia.update', form.id) : route('consortia.store');
 
-    // Transformación senior para archivos en PUT
     form.transform((data) => ({
         ...data,
         _method: editMode.value ? 'PUT' : 'POST',
     })).post(url, {
+        forceFormData: true,
         onSuccess: () => {
             isDrawerOpen.value = false;
-            Swal.fire({ icon: 'success', title: 'Operación exitosa', timer: 1500, showConfirmButton: false });
+            Swal.fire({
+                icon: 'success',
+                title: 'Operación exitosa',
+                timer: 1500,
+                showConfirmButton: false,
+                customClass: { popup: 'rounded-[2rem]' }
+            });
         },
     });
 };
 
+/** Confirmación de eliminación */
 const deleteItem = (id) => {
     Swal.fire({
         title: '¿Eliminar Consorcio?',
@@ -97,7 +116,8 @@ const deleteItem = (id) => {
         showCancelButton: true,
         confirmButtonText: 'Sí, eliminar',
         confirmButtonColor: '#ef4444',
-        cancelButtonText: 'Cancelar'
+        cancelButtonText: 'Cancelar',
+        customClass: { popup: 'rounded-[2rem]' }
     }).then((res) => {
         if (res.isConfirmed) router.delete(route('consortia.destroy', id));
     });
@@ -110,10 +130,15 @@ const deleteItem = (id) => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h2 class="font-bold text-2xl text-gray-800 tracking-tight">Empresas</h2>
-                <PrimaryButton @click="openDrawer()" class="gap-2 w-full sm:w-auto">
-                    <Plus :size="18" /> Nuevo Consorcio
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="font-black text-3xl text-slate-900 tracking-tight">Consorcios</h2>
+                    <p class="text-sm text-slate-500 font-medium">Visualización y control de consorcios.</p>
+                </div>
+                <PrimaryButton @click="openDrawer()"
+                    class="rounded-2xl h-12 px-6 bg-indigo-600 hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 gap-2">
+                    <Plus :size="20" />
+                    <span class="font-bold tracking-tight">Nuevo Consorcio</span>
                 </PrimaryButton>
             </div>
         </template>
@@ -132,7 +157,7 @@ const deleteItem = (id) => {
                                 <tr>
                                     <th class="px-6 py-4">Información del Consorcio</th>
                                     <th class="px-6 py-4">Representante Legal</th>
-                                    <th class="px-6 py-4">Socios</th>
+                                    <th class="px-6 py-4 text-center">Socios</th>
                                     <th class="px-6 py-4 text-right">Acciones</th>
                                 </tr>
                             </thead>
@@ -150,66 +175,60 @@ const deleteItem = (id) => {
                                             </div>
                                             <div>
                                                 <div
-                                                    class="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                                                    {{ c.name }}</div>
+                                                    class="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors uppercase">
+                                                    {{ c.name }}
+                                                </div>
                                                 <div class="text-xs text-gray-400 font-medium">
                                                     RUC: {{ c.ruc || 'Pendiente' }}
                                                 </div>
                                             </div>
                                         </div>
                                     </td>
+
                                     <td class="px-6 py-4">
-                                        <div :class="['text-sm font-semibold ',
-                                            c.legal_representative ? 'text-gray-700' : 'text-gray-400 italic']">
+                                        <div
+                                            :class="['text-sm font-semibold ', c.legal_representative ? 'text-gray-700' : 'text-gray-400 italic']">
                                             {{ c.legal_representative || 'No asignado' }}
                                         </div>
-                                        <div :class="['text-xs font-semibold ',
-                                            c.representative_email ? 'text-gray-600' : 'text-gray-400 italic']">
-                                            {{ c.representative_email || 'Pendiente' }}
+                                        <div
+                                            :class="['text-xs font-semibold ', c.representative_email ? 'text-gray-600' : 'text-gray-400 italic']">
+                                            {{ c.representative_email || 'Email pendiente' }}
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4">
-                                        <div class="flex items-center">
-                                            <div class="flex -space-x-3 overflow-hidden">
-                                                <template v-for="(company) in c.companies.slice(0, 3)"
-                                                    :key="company.id">
-                                                    <div class="inline-block h-9 w-9 rounded-full ring-2 ring-white bg-gray-800 overflow-hidden shadow-sm"
+
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex items-center justify-center gap-3">
+                                            <div class="flex -space-x-2 overflow-hidden">
+                                                <template v-for="company in c.companies.slice(0, 3)" :key="company.id">
+                                                    <div class="inline-block h-8 w-8 rounded-full ring-2 ring-white bg-slate-100 overflow-hidden shadow-sm"
                                                         :title="company.name">
                                                         <img v-if="company.url_logo"
                                                             :src="`/storage/${company.url_logo}`"
-                                                            class="h-full w-full object-cover" :alt="company.name" />
+                                                            class="h-full w-full object-cover" />
                                                         <div v-else
-                                                            class="h-full w-full bg-indigo-100 flex items-center justify-center text-[10px] font-bold text-indigo-600 uppercase">
+                                                            class="h-full w-full bg-indigo-50 flex items-center justify-center text-[9px] font-black text-indigo-500 uppercase">
                                                             {{ company.name.substring(0, 2) }}
                                                         </div>
                                                     </div>
                                                 </template>
-
                                                 <div v-if="c.companies.length > 3"
-                                                    class="flex h-8 w-8 items-center justify-center rounded-full bg-gray-800 ring-2 ring-white text-[10px] font-bold text-white shadow-sm">
+                                                    class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 ring-2 ring-white text-[9px] font-black text-white shadow-sm">
                                                     +{{ c.companies.length - 3 }}
                                                 </div>
                                             </div>
-
-                                            <div class="ml-4">
-                                                <span class="text-xs font-semibold text-gray-500 italic"
-                                                    v-if="c.companies.length === 0">
-                                                    Sin socios
-                                                </span>
-                                                <span
-                                                    class="text-[11px] font-bold text-gray-400 uppercase tracking-tighter"
-                                                    v-else>
-                                                    {{ c.companies.length }} {{ c.companies.length === 1 ? 'Socio' :
-                                                        'Socios' }}
-                                                </span>
-                                            </div>
+                                            <span
+                                                class="text-[10px] font-black text-slate-400 uppercase tracking-tighter">
+                                                {{ c.companies.length }} {{ c.companies.length === 1 ? 'Socio' :
+                                                'Socios' }}
+                                            </span>
                                         </div>
                                     </td>
+
                                     <td class="px-6 py-4 text-right">
                                         <div class="flex justify-end items-center gap-1">
                                             <button @click="showContact(c)"
                                                 class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                                                title="Detalles">
+                                                title="Ver Detalles">
                                                 <Contact :size="18" />
                                             </button>
                                             <button @click="openDrawer(c)"
@@ -230,6 +249,7 @@ const deleteItem = (id) => {
                     </div>
 
                     <EmptyState v-if="consortia.data.length === 0" :search="search" />
+
                     <div class="p-6 border-t border-gray-50 bg-gray-50/30">
                         <Pagination :links="consortia.links" />
                     </div>
@@ -238,7 +258,7 @@ const deleteItem = (id) => {
         </div>
 
         <ConsortiumDrawer :show="isDrawerOpen" :edit-mode="editMode" :form="form" :all-companies="companies"
-            @close="isDrawerOpen = false" @submit="handleSubmit" @updatePhoto="(file) => form.url_logo = file" />
+            @close="isDrawerOpen = false" @submit="handleSubmit" />
 
         <ConsortiumDetailModal :show="isDetailModalOpen" :consortium="selectedConsortium"
             @close="isDetailModalOpen = false" />

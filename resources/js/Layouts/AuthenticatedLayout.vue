@@ -38,6 +38,10 @@ const showingNavigationDropdown = ref(false);
                                 <NavLink :href="route('consortia.index')" :active="route().current('consortia.*')">
                                     Consorcios
                                 </NavLink>
+
+                                <NavLink :href="route('projects.index')" :active="route().current('projects.*')">
+                                    Proyectos
+                                </NavLink>
                             </div>
                         </div>
 
@@ -118,6 +122,10 @@ const showingNavigationDropdown = ref(false);
 
                         <ResponsiveNavLink :href="route('consortia.index')" :active="route().current('consortia.*')">
                             Consorcios
+                        </ResponsiveNavLink>
+
+                        <ResponsiveNavLink :href="route('projects.index')" :active="route().current('projects.*')">
+                            Proyectos
                         </ResponsiveNavLink>
                     </div>
 

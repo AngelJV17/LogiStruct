@@ -1,5 +1,5 @@
 <?php
-namespace App\Http\Controllers\Api;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Company\StoreCompanyRequest;
@@ -10,21 +10,22 @@ use Inertia\Inertia;
 
 class CompanyController extends Controller
 {
-    public function index(Request $request
-    ) {
+    public function index(Request $request)
+    {
         $companies = Company::query()
-            ->when($request->input('search'), function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('ruc', 'like', "%{$search}%");
-            }) // <-- Verifica que este paréntesis esté cerrado
-            ->latest()
-            ->paginate($request->input('perPage', 10))
-            ->withQueryString();
+    ->when($request->input('search'), function ($query, $search) {
+        $query->where('name', 'like', "%{$search}%")
+            ->orWhere('ruc', 'like', "%{$search}%");
+    }) // <-- Verifica que este paréntesis esté cerrado
+    ->latest()
+    ->paginate($request->input('perPage', 10))
+    ->withQueryString();
 
-        return Inertia::render('Companies/Index', [
-            'companies' => $companies,
-            'filters'   => $request->only(['search', 'perPage']),
-        ]);
+return Inertia::render('Companies/Index', [
+    'companies' => $companies,
+    'filters'   => $request->only(['search', 'perPage']),
+]);
+
     }
 
     public function store(StoreCompanyRequest $request)
@@ -32,7 +33,7 @@ class CompanyController extends Controller
         $data = $request->validated();
 
         if ($request->hasFile('url_logo')) {
-            $data['url_logo'] = $request->file('url_logo')->store('logos', 'public');
+            $data['url_logo'] = $request->file('url_logo')->store('companies_logos', 'public');
         }
 
         Company::create($data);
@@ -60,7 +61,7 @@ class CompanyController extends Controller
             if ($company->url_logo) {
                 Storage::disk('public')->delete($company->url_logo);
             }
-            $validated['url_logo'] = $request->file('url_logo')->store('logos', 'public');
+            $validated['url_logo'] = $request->file('url_logo')->store('companies_logos', 'public');
         } else {
             // SI NO HAY ARCHIVO NUEVO: Quitamos el campo del array
             // para que Laravel NO intente actualizarlo a null.

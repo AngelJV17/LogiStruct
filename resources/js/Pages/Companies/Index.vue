@@ -2,10 +2,10 @@
 import { ref, watch } from 'vue';
 import { Head, router, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import Swal from 'sweetalert2';
 import { Pencil, Trash2, Contact, Building2, Plus } from 'lucide-vue-next';
+import Swal from 'sweetalert2';
 
-// Componentes Reutilizables
+// Componentes
 import TableFilters from '@/Components/TableFilters.vue';
 import Pagination from '@/Components/Pagination.vue';
 import EmptyState from '@/Components/EmptyState.vue';
@@ -18,7 +18,7 @@ const props = defineProps({
     filters: Object,
 });
 
-// --- ESTADOS ---
+// --- 1. ESTADOS ---
 const isDrawerOpen = ref(false);
 const isDetailModalOpen = ref(false);
 const editMode = ref(false);
@@ -26,14 +26,22 @@ const selectedCompany = ref(null);
 const search = ref(props.filters.search || '');
 const perPage = ref(props.filters.perPage || '10');
 
+// --- 2. FORMULARIO ---
 const form = useForm({
-    id: null, ruc: '', name: '', url_logo: null,
-    phone: '', email: '', address: '',
-    legal_representative: '', representative_dni: '',
-    representative_phone: '', issues_payment_order: false
+    id: null,
+    ruc: '',
+    name: '',
+    url_logo: null,
+    phone: '',
+    email: '',
+    address: '',
+    legal_representative: '',
+    representative_dni: '',
+    representative_phone: '',
+    issues_payment_order: false
 });
 
-// --- WATCHERS (Filtros) ---
+// --- 3. WATCHERS (Filtros) ---
 watch([search, perPage], () => {
     router.get(route('companies.index'),
         { search: search.value, perPage: perPage.value },
@@ -41,43 +49,61 @@ watch([search, perPage], () => {
     );
 });
 
-// --- ACCIONES ---
+// --- 4. ACCIONES ---
+
+/** Abre el drawer para crear o editar */
 const openDrawer = (company = null) => {
     editMode.value = !!company;
     form.clearErrors();
 
     if (company) {
-        // Usamos una copia para no mutar el objeto de la lista directamente
-        Object.assign(form, {
-            ...company,
-            issues_payment_order: Boolean(company.issues_payment_order)
-        });
+        form.id = company.id;
+        form.ruc = company.ruc;
+        form.name = company.name;
+        form.url_logo = company.url_logo;
+        form.phone = company.phone;
+        form.email = company.email;
+        form.address = company.address;
+        form.legal_representative = company.legal_representative;
+        form.representative_dni = company.representative_dni;
+        form.representative_phone = company.representative_phone;
+        form.issues_payment_order = Boolean(company.issues_payment_order);
     } else {
         form.reset();
     }
     isDrawerOpen.value = true;
 };
 
+/** Muestra modal con detalles de la empresa */
 const showContact = (company) => {
     selectedCompany.value = company;
     isDetailModalOpen.value = true;
 };
 
+/** Envío de datos al backend */
 const handleSubmit = () => {
     const url = editMode.value ? route('companies.update', form.id) : route('companies.store');
 
-    // Transformación senior para archivos en PUT
+    // Transformación necesaria para manejar archivos con método PUT en Laravel
     form.transform((data) => ({
         ...data,
         _method: editMode.value ? 'PUT' : 'POST',
     })).post(url, {
+        forceFormData: true,
         onSuccess: () => {
             isDrawerOpen.value = false;
-            Swal.fire({ icon: 'success', title: 'Operación exitosa', timer: 1500, showConfirmButton: false });
+            Swal.fire({
+                icon: 'success',
+                title: 'Operación exitosa',
+                timer: 1500,
+                showConfirmButton: false,
+                customClass: { popup: 'rounded-[2rem]' }
+            });
         },
     });
 };
 
+/** Elimina un registro con confirmación */
 const deleteItem = (id) => {
     Swal.fire({
         title: '¿Eliminar empresa?',
@@ -86,7 +112,8 @@ const deleteItem = (id) => {
         showCancelButton: true,
         confirmButtonColor: '#ef4444',
         confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar'
+        cancelButtonText: 'Cancelar',
+        customClass: { popup: 'rounded-[2rem]' }
     }).then((result) => {
         if (result.isConfirmed) {
             router.delete(route('companies.destroy', id));
@@ -101,10 +128,15 @@ const deleteItem = (id) => {
 
     <AuthenticatedLayout>
         <template #header>
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h2 class="font-bold text-2xl text-gray-800 tracking-tight">Empresas</h2>
-                <PrimaryButton @click="openDrawer()" class="gap-2 w-full sm:w-auto">
-                    <Plus :size="18" /> Nueva Empresa
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h2 class="font-black text-3xl text-slate-900 tracking-tight">Empresas</h2>
+                    <p class="text-sm text-slate-500 font-medium">Visualización y control de empresas.</p>
+                </div>
+                <PrimaryButton @click="openDrawer()"
+                    class="rounded-2xl h-12 px-6 bg-indigo-600 hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 gap-2">
+                    <Plus :size="20" />
+                    <span class="font-bold tracking-tight">Nueva Empresa</span>
                 </PrimaryButton>
             </div>
         </template>
@@ -141,8 +173,9 @@ const deleteItem = (id) => {
                                             </div>
                                             <div>
                                                 <div
-                                                    class="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                                                    {{ co.name }}</div>
+                                                    class="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors uppercase">
+                                                    {{ co.name }}
+                                                </div>
                                                 <div class="text-xs text-gray-400 font-medium">
                                                     RUC: {{ co.ruc || 'PENDIENTE' }}
                                                 </div>
@@ -151,20 +184,20 @@ const deleteItem = (id) => {
                                     </td>
 
                                     <td class="px-6 py-4">
-                                        <div :class="['text-sm font-semibold ',
-                                            co.legal_representative ? 'text-gray-700' : 'text-gray-400 italic']">
+                                        <div
+                                            :class="['text-sm font-semibold ', co.legal_representative ? 'text-gray-700' : 'text-gray-400 italic']">
                                             {{ co.legal_representative || 'No asignado' }}
                                         </div>
-                                        <div :class="['text-xs font-semibold ',
-                                            co.representative_phone ? 'text-gray-600' : 'text-gray-400 italic']">
-                                            {{ co.representative_phone || 'Pendiente' }}
+                                        <div
+                                            :class="['text-xs font-semibold ', co.representative_phone ? 'text-gray-600' : 'text-gray-400 italic']">
+                                            {{ co.representative_phone || 'Teléfono pendiente' }}
                                         </div>
                                     </td>
 
                                     <td class="px-6 py-4 text-center">
                                         <span :class="[
-                                            'px-2 py-1 rounded text-[10px] font-bold uppercase tracking-tighter',
-                                            co.issues_payment_order ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                                            'text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-tighter shadow-sm border',
+                                            co.issues_payment_order ? 'bg-green-50 text-green-600 border-green-100' : 'bg-gray-50 text-gray-600 border-gray-100'
                                         ]">
                                             {{ co.issues_payment_order ? 'Emite OP' : 'No Emite' }}
                                         </span>
@@ -204,7 +237,7 @@ const deleteItem = (id) => {
         </div>
 
         <CompanyDrawer :show="isDrawerOpen" :edit-mode="editMode" :form="form" @close="isDrawerOpen = false"
-            @submit="handleSubmit" @updatePhoto="(file) => form.url_logo = file" />
+            @submit="handleSubmit" />
 
         <CompanyDetailModal :show="isDetailModalOpen" :company="selectedCompany" @close="isDetailModalOpen = false" />
     </AuthenticatedLayout>
