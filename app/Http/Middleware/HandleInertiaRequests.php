@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
@@ -30,9 +29,16 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         return [
-            ...parent::share($request),
-            'auth' => [
+             ...parent::share($request),
+            'auth'  => [
                 'user' => $request->user(),
+            ], // Agrega esta sección:
+            'flash' => [
+                // Usamos un closure para que Inertia evalúe la sesión en cada petición
+                'message' => fn() => $request->session()->get('message'),
+                'type'    => fn()    => $request->session()->get('type', 'success'),
+                // Agregamos un timestamp para que el 'watch' de Vue siempre detecte un cambio
+                'id'      => fn()      => uniqid(),
             ],
         ];
     }

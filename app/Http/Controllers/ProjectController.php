@@ -10,150 +10,118 @@ use App\Models\Project;
 use App\Models\UbigeoPeruDepartment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class ProjectController extends Controller
 {
+    private const STORAGE_PATH = 'projects/covers';
+
     public function index(Request $request)
     {
-        // 1. Iniciamos la consulta con Eager Loading para evitar el problema N+1
         $projects = Project::query()
-            ->with([
-                'type',
-                'status',
-                'department',
-                'province',
-                'district',
-                'company',
-                'consortium',
-            ])
-        // 2. Aplicamos filtros de búsqueda si existen
-            ->when($request->input('search'), function ($query, $search) {
-                $query->where(function ($q) use ($search) {
-                    $q->where('project_name', 'like', "%{$search}%")
-                        ->orWhere('project_code', 'like', "%{$search}%")
-                        ->orWhere('short_name', 'like', "%{$search}%");
-                });
-            })
-        // 3. Ordenamos por los más recientes por defecto
+            ->with(['type', 'status', 'department', 'province', 'district', 'company', 'consortium'])
+            ->when($request->search, fn($q, $s) =>
+                $q->where('project_name', 'like', "%{$s}%")
+                    ->orWhere('project_code', 'like', "%{$s}%")
+                    ->orWhere('short_name', 'like', "%{$s}%")
+            )
             ->latest()
-        // 4. Paginación dinámica (usa 10 por defecto si no viene en el request)
-            ->paginate($request->input('perPage', 10))
-        // 5. Mantenemos los parámetros de búsqueda en los links de paginación
+            ->paginate($request->perPage ?? 10)
             ->withQueryString();
 
-        // 6. Retornamos a la vista de Inertia con todos los datos necesarios
         return Inertia::render('Projects/Index', [
-            // Transformamos los proyectos usando el Resource que corregimos
             'projects'    => ProjectResource::collection($projects),
-
-            // Enviamos los filtros actuales para que los inputs no se limpien
             'filters'     => $request->only(['search', 'perPage']),
-
-            // Datos para los Selects del Drawer
-            // Filtramos por el grupo que definiste en tu seeder
-            'types'       => GlobalParameter::where('group', 'PROJECT_TYPE')
-                ->where('level', 2)
-                ->select('id', 'name')
-                ->get(),
-
-            'statuses'    => GlobalParameter::where('group', 'PROJECT_STATUS')
-                ->where('level', 2)
-                ->select('id', 'name')
-                ->get(),
-
-            'companies'   => Company::orderBy('name')->get(),
-            'consortia'   => Consortium::orderBy('name')->get(),
-            'departments' => UbigeoPeruDepartment::orderBy('name')->get(),
+            'types'       => $this->getGlobalParams('PROJECT_TYPE'),
+            'statuses'    => $this->getGlobalParams('PROJECT_STATUS'),
+            'companies'   => Company::select('id', 'name')->orderBy('name')->get(),
+            'consortia'   => Consortium::select('id', 'name')->orderBy('name')->get(),
+            'departments' => UbigeoPeruDepartment::select('id', 'name')->orderBy('name')->get(),
         ]);
     }
 
     public function show(Project $project)
     {
-        // Debes cargar 'consortium.companies' explícitamente
-        $project->load([
-            'type',
-            'status',
-            'department',
-            'province',
-            'district',
-            'company',
-            'consortium.companies', // <--- ESTA ES LA CLAVE
-        ]);
+        $project->load(['type', 'status', 'department', 'province', 'district', 'company', 'consortium.companies']);
 
-        return Inertia::render('Projects/Show', [
-            'project' => $project,
-        ]);
+        return Inertia::render('Projects/Show', ['project' => $project]);
     }
 
     public function store(SaveProjectRequest $request)
     {
-        return DB::transaction(function () use ($request) {
-            $data = $request->validated();
+        try {
+            return DB::transaction(function () use ($request) {
+                $data = $request->validated();
 
-            if ($request->hasFile('cover_image')) {
-                // Guardamos en la carpeta unificada
-                $path                = $request->file('cover_image')->store('projects/covers', 'public');
-                $data['cover_image'] = $path;
-            }
+                if ($request->hasFile('cover_image')) {
+                    $data['cover_image'] = $request->file('cover_image')->store(self::STORAGE_PATH, 'public');
+                }
 
-            Project::create($data);
+                $project = Project::create($data);
 
-            return back()->with('message', [
-                'type' => 'success',
-                'text' => "Proyecto registrado con éxito.",
-            ]);
-        });
+                return redirect()->route('projects.index')
+                    ->with(['message' => "Proyecto {$project->project_code} creado.", 'type' => 'success']);
+            });
+        } catch (\Exception $e) {
+            Log::error("Error Store Project: {$e->getMessage()}");
+            return redirect()->back()->with(['message' => 'Error al crear el proyecto.', 'type' => 'error']);
+        }
     }
 
     public function update(SaveProjectRequest $request, Project $project)
     {
-        return DB::transaction(function () use ($request, $project) {
-            $data = $request->validated();
+        try {
+            return DB::transaction(function () use ($request, $project) {
+                $data = $request->validated();
 
-            if ($request->hasFile('cover_image')) {
-                // 1. ELIMINACIÓN: Si existe una imagen previa, la borramos del disco
-                if ($project->cover_image && Storage::disk('public')->exists($project->cover_image)) {
-                    Storage::disk('public')->delete($project->cover_image);
+                if ($request->hasFile('cover_image')) {
+                    $this->deleteCover($project->cover_image);
+                    $data['cover_image'] = $request->file('cover_image')->store(self::STORAGE_PATH, 'public');
+                } else {
+                    unset($data['cover_image']);
                 }
 
-                // 2. GUARDADO: Usamos la misma carpeta 'projects/covers'
-                $path = $request->file('cover_image')->store('projects/covers', 'public');
+                $project->update($data);
 
-                // 3. ASIGNACIÓN: Guardamos la nueva ruta en el array
-                $data['cover_image'] = $path;
-            } else {
-                // Si no se subió una nueva imagen, quitamos el campo del array
-                // para que no intente guardar el objeto temporal o null
-                unset($data['cover_image']);
-            }
-
-            // 4. ACTUALIZACIÓN: Actualizamos el modelo con el array limpio
-            $project->update($data);
-
-            return back()->with('message', [
-                'type' => 'success',
-                'text' => "Proyecto actualizado correctamente.",
-            ]);
-        });
+                return redirect()->route('projects.index')
+                    ->with(['message' => 'Proyecto actualizado correctamente.', 'type' => 'success']);
+            });
+        } catch (\Exception $e) {
+            Log::error("Error Update Project ID {$project->id}: {$e->getMessage()}");
+            return redirect()->back()->with(['message' => 'Error al actualizar el proyecto.', 'type' => 'error']);
+        }
     }
 
     public function destroy(Project $project)
     {
-        return DB::transaction(function () use ($project) {
-            // 1. Borrar la imagen física si existe
-            if ($project->cover_image && Storage::disk('public')->exists($project->cover_image)) {
-                Storage::disk('public')->delete($project->cover_image);
-            }
-
-            // 2. Eliminar el proyecto de la base de datos
+        try {
+            $this->deleteCover($project->cover_image);
             $project->delete();
 
-            return back()->with('message', [
-                'type' => 'success',
-                'text' => "Proyecto eliminado exitosamente.",
-            ]);
-        });
+            return redirect()->back()->with(['message' => 'Proyecto eliminado.', 'type' => 'success']);
+        } catch (\Exception $e) {
+            Log::error("Error Delete Project ID {$project->id}: {$e->getMessage()}");
+            return redirect()->back()->with(['message' => 'No se pudo eliminar el proyecto.', 'type' => 'error']);
+        }
+    }
+
+    /**
+     * Helpers privados para limpieza y consistencia
+     */
+    private function deleteCover(?string $path): void
+    {
+        if ($path && Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
+    }
+
+    private function getGlobalParams(string $group)
+    {
+        return GlobalParameter::where('group', $group)
+            ->where('level', 2)
+            ->select('id', 'name')
+            ->get();
     }
 }

@@ -60,27 +60,30 @@ watch([search, perPage], debounce(() => {
 }, 400));
 
 // Alertas de Flash Messages
-watch(() => page.props.flash?.message, (message) => {
-    if (message) {
+watch(() => page.props.flash, (flash) => {
+    if (flash?.message) {
         Swal.fire({
-            icon: page.props.flash.type || 'success',
-            title: '¡Operación exitosa!',
-            text: message,
-            timer: 2000,
+            icon: flash.type || 'success',
+            title: flash.type === 'error' ? '¡Atención!' : '¡Operación exitosa!',
+            text: flash.message,
+            timer: 3000,
+            timerProgressBar: true,
             showConfirmButton: false,
             customClass: { popup: 'rounded-[2rem]' }
+        }).then(() => {
+            // Limpiamos el mensaje para evitar que se repita al navegar
+            page.props.flash.message = null;
         });
     }
-});
+}, { deep: true }); // 'deep' es vital para observar cambios dentro del objeto flash
 
 // --- 4. ACCIONES ---
 
-/** Abre el Drawer para crear o editar */
 const openDrawer = (project = null) => {
     selectedProject.value = project;
 
     if (project) {
-        // Llenado de datos para edición
+        // Mapeo exhaustivo para edición (Asegúrate que coincida con tu Resource/API)
         form.id = project.id;
         form.project_code = project.project_code;
         form.project_name = project.project_name;
@@ -88,8 +91,21 @@ const openDrawer = (project = null) => {
         form.type_id = project.type_id;
         form.status_id = project.status_id;
         form.contractual_amount = project.amounts?.contractual || 0;
+        form.projected_amount = project.amounts?.projected || 0;
         form.start_date = project.dates?.start_raw;
-        // ... cargar los demás campos según tu estructura de API
+        form.end_date_contractual = project.dates?.end_contractual_raw;
+
+        // Ubicación
+        form.department_id = project.location?.ids?.department || '';
+        form.province_id = project.location?.ids?.province || '';
+        form.district_id = project.location?.ids?.district || '';
+        form.address = project.location?.address_detail || '';
+
+        // Responsables
+        form.consortium_id = project.consortium_id;
+        form.company_id = project.company_id;
+
+        form.cover_image = null;
     } else {
         form.reset();
         form.id = null;
@@ -98,21 +114,27 @@ const openDrawer = (project = null) => {
     isDrawerOpen.value = true;
 };
 
-/** Envío del formulario */
 const handleSubmit = () => {
-    const url = selectedProject.value
-        ? route('projects.update', selectedProject.value.id)
+    // Si hay id, es PUT (update), si no, es POST (store)
+    const isEditing = !!form.id;
+    const url = isEditing
+        ? route('projects.update', form.id)
         : route('projects.store');
 
     form.transform((data) => ({
         ...data,
-        _method: selectedProject.value ? 'PUT' : 'POST',
+        // Inertia necesita _method para spoofing de PUT cuando hay archivos
+        _method: isEditing ? 'PUT' : 'POST',
     })).post(url, {
         forceFormData: true,
+        preserveScroll: true,
         onSuccess: () => {
             isDrawerOpen.value = false;
             form.reset();
         },
+        onError: (errors) => {
+            console.error("Errores de validación:", errors);
+        }
     });
 };
 
@@ -149,133 +171,135 @@ const formatCurrency = (amount) => {
     <Head title="Portafolio de Proyectos" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h2 class="font-black text-3xl text-slate-900 tracking-tight">Proyectos</h2>
-                    <p class="text-sm text-slate-500 font-medium">Visualización y control de cartera de obras.</p>
-                </div>
-                <PrimaryButton @click="openDrawer()"
-                    class="rounded-2xl h-12 px-6 bg-indigo-600 hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 gap-2">
-                    <Plus :size="20" />
-                    <span class="font-bold tracking-tight">Nuevo Proyecto</span>
-                </PrimaryButton>
-            </div>
+        <template #header>Proyectos</template>
+
+        <template #header-actions>
+            <PrimaryButton @click="openDrawer()"
+                class="rounded-lg h-10 px-4 bg-indigo-600 hover:bg-indigo-700 transition-all shadow-md gap-2 border-none">
+                <Plus :size="18" />
+                <span class="font-bold text-xs uppercase tracking-widest">Nuevo Proyecto</span>
+            </PrimaryButton>
         </template>
 
-        <div class="py-10">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+        <div class="space-y-4">
 
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <div
+                class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between gap-4">
+
+                <div class="flex-1">
                     <TableFilters v-model="search" v-model:perPage="perPage" />
                 </div>
 
-                <div class="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead class="bg-gray-200 text-xs font-bold text-gray-500 uppercase">
-                                <tr>
-                                    <th class="px-6 py-4">Información del Proyecto</th>
-                                    <th class="px-6 py-4">Ubicación</th>
-                                    <th class="px-6 text-center">Estado / Fechas</th>
-                                    <th class="px-6 py-4">Presupuesto</th>
-                                    <th class="px-6 py-4 text-right">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200">
-                                <tr v-for="project in projects.data" :key="project.id"
-                                    class="group transition-all duration-200 hover:bg-indigo-50/40 hover:shadow-[inset_4px_0_0_0_#4f46e5]">
+                <div
+                    class="hidden md:flex items-center gap-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest shrink-0 whitespace-nowrap">
+                    <span>Total Proyectos: {{ projects.meta.total }}</span>
+                </div>
+            </div>
 
-                                    <td class="px-6 py-4">
-                                        <div class="flex items-center gap-4">
+            <div class="bg-white shadow-sm rounded-xl border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead
+                            class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            <tr>
+                                <th class="px-6 py-4">Información del Proyecto</th>
+                                <th class="px-6 py-4">Ubicación</th>
+                                <th class="px-6 py-4 text-center">Estado / Fechas</th>
+                                <th class="px-6 py-4 text-right">Presupuesto</th>
+                                <th class="px-6 py-4 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm">
+                            <tr v-for="project in projects.data" :key="project.id"
+                                class="group transition-all duration-200 hover:bg-slate-50/80">
+
+                                <td class="px-6 py-3">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="h-10 w-10 rounded-lg border border-slate-200 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-sm group-hover:border-indigo-300 transition-colors">
+                                            <img v-if="project.cover_url" :src="project.cover_url"
+                                                class="h-full w-full object-cover" />
+                                            <LayoutGrid v-else class="text-slate-300" :size="18" />
+                                        </div>
+                                        <div class="leading-tight">
                                             <div
-                                                class="h-12 w-12 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-center overflow-hidden shrink-0 shadow-sm group-hover:border-indigo-200">
-                                                <img v-if="project.cover_url" :src="project.cover_url"
-                                                    class="h-full w-full object-cover" />
-                                                <LayoutGrid v-else class="text-gray-300" :size="20" />
+                                                class="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors uppercase text-xs truncate max-w-[250px]">
+                                                {{ project.short_name }}
                                             </div>
-                                            <div class="max-w-xs">
-                                                <div
-                                                    class="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors truncate uppercase">
-                                                    {{ project.short_name }}
-                                                </div>
-                                                <div class="text-xs text-gray-400 font-medium tracking-tight">
-                                                    CÓDIGO: {{ project.project_code }}
-                                                </div>
+                                            <div class="text-[10px] text-slate-400 font-bold mt-1 tracking-wide">
+                                                ID: {{ project.project_code }}
                                             </div>
                                         </div>
-                                    </td>
+                                    </div>
+                                </td>
 
-                                    <td class="px-6 py-4">
-                                        <div class="flex flex-col gap-1">
-                                            <div class="flex items-center gap-1.5 text-sm font-semibold tracking-tight"
-                                                :class="project.location?.full_address ? 'text-gray-700' : 'text-gray-400 italic'">
-                                                <MapPin :size="14" class="shrink-0 text-indigo-500/70" />
-                                                <span class="truncate max-w-[200px]">
-                                                    {{ project.location?.full_address || 'Sin ubicación' }}
-                                                </span>
-                                            </div>
-                                            <div class="pl-5 text-xs font-medium"
-                                                :class="project.location?.address_detail ? 'text-gray-500' : 'text-gray-400 italic'">
-                                                {{ project.location?.address_detail || 'Sin detalles' }}
-                                            </div>
+                                <td class="px-6 py-3">
+                                    <div class="flex flex-col gap-0.5">
+                                        <div class="flex items-center gap-1.5 text-xs font-bold text-slate-700">
+                                            <MapPin :size="12" class="text-indigo-500" />
+                                            {{ project.location?.full_address || 'No definida' }}
                                         </div>
-                                    </td>
-
-                                    <td class="px-6 py-4 text-center">
-                                        <div class="inline-flex flex-col items-center">
-                                            <span :class="[
-                                                'text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-tighter mb-1.5 shadow-sm border',
-                                                project.dates?.is_expired ? 'bg-rose-50 text-rose-600 border-rose-100' : 'bg-green-50 text-green-600 border-green-100'
-                                            ]">
-                                                {{ project.dates?.is_expired ? 'Finalizado' : 'En Ejecución' }}
-                                            </span>
-                                            <div class="flex items-center gap-1 text-[10px] text-slate-500 font-bold">
-                                                <Calendar :size="10" /> {{ project.dates?.start || 'S/F' }}
-                                            </div>
+                                        <div class="text-[10px] text-slate-400 font-medium pl-4 truncate max-w-[150px]">
+                                            {{ project.location?.address_detail || '---' }}
                                         </div>
-                                    </td>
+                                    </div>
+                                </td>
 
-                                    <td class="px-6 py-4">
-                                        <div class="flex flex-col">
-                                            <span
-                                                class="text-[10px] text-slate-400 font-black uppercase tracking-widest">PEN</span>
-                                            <span class="text-sm font-black text-slate-900 tracking-tight">
-                                                {{ formatCurrency(project.amounts?.contractual) }}
-                                            </span>
+                                <td class="px-6 py-3 text-center">
+                                    <div class="inline-flex flex-col items-center">
+                                        <span :class="[
+                                            'text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-widest mb-1 border shadow-xs',
+                                            project.dates?.is_expired
+                                                ? 'bg-rose-50 text-rose-600 border-rose-100'
+                                                : 'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                        ]">
+                                            {{ project.dates?.is_expired ? 'Finalizado' : 'En Ejecución' }}
+                                        </span>
+                                        <div class="flex items-center gap-1 text-[10px] text-slate-500 font-bold">
+                                            <Calendar :size="10" /> {{ project.dates?.start || 'S/F' }}
                                         </div>
-                                    </td>
+                                    </div>
+                                </td>
 
-                                    <td class="px-6 py-4 text-right">
-                                        <div class="flex justify-end items-center gap-1">
-                                            <Link :href="route('projects.show', project.id)"
-                                                class="p-2 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                                                title="Ver Detalles del Proyecto">
-                                            <ExternalLink :size="18" />
-                                            </Link>
-                                            <button @click="openDrawer(project)"
-                                                class="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
-                                                title="Editar">
-                                                <Pencil :size="18" />
-                                            </button>
-                                            <button @click="deleteItem(project.id)"
-                                                class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                title="Eliminar">
-                                                <Trash2 :size="18" />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                                <td class="px-6 py-3 text-right">
+                                    <div class="flex flex-col leading-none">
+                                        <span
+                                            class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">PEN</span>
+                                        <span class="text-xs font-black text-slate-900 tracking-tight">
+                                            {{ formatCurrency(project.amounts?.contractual) }}
+                                        </span>
+                                    </div>
+                                </td>
 
-                    <EmptyState v-if="projects.data.length === 0" :search="search" />
+                                <td class="px-6 py-3 text-right">
+                                    <div
+                                        class="flex justify-end items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                        <Link :href="route('projects.show', project.id)"
+                                            class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                            title="Explorar">
+                                            <ExternalLink :size="16" />
+                                        </Link>
+                                        <button @click="openDrawer(project)"
+                                            class="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                                            title="Editar">
+                                            <Pencil :size="16" />
+                                        </button>
+                                        <button @click="deleteItem(project.id)"
+                                            class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                            title="Eliminar">
+                                            <Trash2 :size="16" />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
-                    <div class="p-6 border-t border-gray-50 bg-gray-50/30">
-                        <!-- <Pagination :links="projects.links" /> -->
-                        <Pagination :links="projects.meta.links" />
-                    </div>
+                <EmptyState v-if="projects.data.length === 0" :search="search" />
+
+                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+                    <Pagination :links="projects.meta.links" />
                 </div>
             </div>
         </div>

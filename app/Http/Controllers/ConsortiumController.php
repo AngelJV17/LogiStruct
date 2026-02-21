@@ -1,129 +1,115 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Http\Requests\Consortium\SaveConsortiumRequest;
 use App\Models\Company;
 use App\Models\Consortium;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class ConsortiumController extends Controller
 {
+    private const STORAGE_PATH = 'consortia_logos';
+
     public function index(Request $request)
     {
-        $filters = $request->only(['search', 'perPage']);
-        $perPage = $request->perPage ?? 10;
-
-        $consortia = Consortium::query()
-            ->with('companies') // Cargamos los socios para el Drawer y la tabla
-            ->when($request->search, function ($query, $search) {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('ruc', 'like', "%{$search}%");
-            })
-            ->latest()
-            ->paginate($perPage)
-            ->withQueryString();
-
         return Inertia::render('Consortia/Index', [
-            'consortia' => $consortia,
-            'companies' => Company::select('id', 'name')->get(), // Para el select del Drawer
-            'filters'   => $filters,
+            'consortia' => Consortium::query()
+                ->with('companies:id,name,ruc,url_logo') // Carga optimizada (solo columnas necesarias)
+                ->when($request->search, fn($q, $s) =>
+                    $q->where('name', 'like', "%{$s}%")->orWhere('ruc', 'like', "%{$s}%")
+                )
+                ->latest()
+                ->paginate($request->perPage ?? 10)
+                ->withQueryString(),
+            'companies' => Company::select('id', 'name', 'ruc', 'url_logo')->get(),
+            'filters'   => $request->only(['search', 'perPage']),
         ]);
     }
 
-    public function store(Request $request)
+    public function store(SaveConsortiumRequest $request)
     {
-        $validated = $this->validateRequest($request);
+        try {
+            return DB::transaction(function () use ($request) {
+                $data = $request->validated();
 
-        DB::transaction(function () use ($request, $validated) {
-            // 1. Manejo del Logo
-            if ($request->hasFile('url_logo')) {
-                $validated['url_logo'] = $request->file('url_logo')->store('consortia_logos', 'public');
-            }
+                if ($request->hasFile('url_logo')) {
+                    $data['url_logo'] = $request->file('url_logo')->store(self::STORAGE_PATH, 'public');
+                }
 
-            // 2. Crear Consorcio
-            $consortium = Consortium::create($validated);
+                $consortium = Consortium::create($data);
+                $this->attachCompanies($consortium, $data['selected_companies']);
 
-            // 3. Sincronizar Socios (Attach con porcentajes)
-            $this->syncCompanies($consortium, $request->selected_companies);
-        });
-
-        return redirect()->back()->with('success', 'Consorcio creado correctamente.');
+                return redirect()->route('consortia.index')
+                    ->with(['message' => "Consorcio {$consortium->name} creado.", 'type' => 'success']);
+            });
+        } catch (\Exception $e) {
+            Log::error("Error Store Consortium: {$e->getMessage()}");
+            return redirect()->back()->with(['message' => 'Error al crear consorcio.', 'type' => 'error']);
+        }
     }
 
-    public function update(Request $request, Consortium $consortium)
+    public function update(SaveConsortiumRequest $request, Consortium $consortium)
     {
-        //dd('Aquí estamos en update:  ', $request->selected_companies);
-        $validated = $this->validateRequest($request, $consortium->id);
+        try {
+            return DB::transaction(function () use ($request, $consortium) {
+                // Obtenemos los datos validados (excepto el logo por ahora)
+                $data = $request->validated();
 
-        DB::transaction(function () use ($request, $validated, $consortium) {
-            // 1. Actualizar Logo (borrar anterior si hay uno nuevo)
-            if ($request->hasFile('url_logo')) {
-                if ($consortium->url_logo) {
-                    Storage::disk('public')->delete($consortium->url_logo);
+                // Manejo del Logo: Solo si se sube un archivo nuevo
+                if ($request->hasFile('url_logo')) {
+                    $this->deleteLogo($consortium->url_logo);
+                    $data['url_logo'] = $request->file('url_logo')->store(self::STORAGE_PATH, 'public');
+                } else {
+                    // IMPORTANTE: Si no hay archivo nuevo, eliminamos url_logo del array
+                    // para que update() no intente cambiar el valor actual en la BD.
+                    unset($data['url_logo']);
                 }
-                $validated['url_logo'] = $request->file('url_logo')->store('consortia_logos', 'public');
-            }
 
-            // 2. Actualizar datos básicos
-            $consortium->update($validated);
+                $consortium->update($data);
 
-            // 3. Sincronizar Socios (Sync reemplaza los anteriores por los nuevos)
-            $this->syncCompanies($consortium, $request->selected_companies);
-        });
+                // Sincronización de socios
+                if (isset($data['selected_companies'])) {
+                    $this->attachCompanies($consortium, $data['selected_companies']);
+                }
 
-        return redirect()->back()->with('success', 'Consorcio actualizado.');
+                return redirect()->route('consortia.index')
+                    ->with(['message' => 'Consorcio actualizado correctamente.', 'type' => 'success']);
+            });
+        } catch (\Exception $e) {
+            Log::error("Error Update Consortium ID {$consortium->id}: " . $e->getMessage());
+            return redirect()->back()->with(['message' => 'Error al actualizar el consorcio.', 'type' => 'error']);
+        }
     }
 
     public function destroy(Consortium $consortium)
     {
-        if ($consortium->url_logo) {
-            Storage::disk('public')->delete($consortium->url_logo);
-        }
-
+        $this->deleteLogo($consortium->url_logo);
         $consortium->delete();
-        return redirect()->back()->with('success', 'Consorcio eliminado.');
+
+        return redirect()->back()->with(['message' => 'Consorcio eliminado.', 'type' => 'success']);
     }
 
     /**
-     * Helpers internos para mantener el código limpio (DRY)
+     * Centraliza la lógica de adjuntar compañías (Pivot)
      */
-    protected function validateRequest(Request $request, $id = null)
+    private function attachCompanies(Consortium $consortium, array $companies): void
     {
-        return $request->validate([
-            'name'                            => 'required|string|max:255',
-            'ruc'                             => 'nullable|string|max:11|unique:consortia,ruc,' . $id,
-            // CAMBIO AQUÍ: Solo valida como imagen si el dato es efectivamente un archivo
-            'url_logo'                        => $request->hasFile('url_logo') ? 'image|mimes:jpg,jpeg,png|max:2048' : 'nullable',
-            'legal_representative'            => 'required|string|max:255',
-            'representative_dni'              => 'nullable|string|max:8',
-            'representative_email'            => 'nullable|email',
-            'representative_phone'            => 'nullable|string',
-            'selected_companies'              => 'required|array|min:2',
-            'selected_companies.*.company_id' => 'required|exists:companies,id', 'distinct',
-            'selected_companies.*.percentage' => 'required|numeric|min:0.01|max:100',
-        ], [
-            // Mensaje personalizado para que el usuario entienda qué pasó
-            'selected_companies.*.company_id.distinct' => 'No puedes seleccionar la misma empresa más de una vez.',
-        ]);
-
-    }
-
-    protected function syncCompanies($consortium, $selectedCompanies)
-    {
-        $syncData = [];
-
-        foreach ($selectedCompanies as $item) {
-            // Asegúrate de que 'company_id' y 'percentage' existan en el objeto que viene de Vue
-            if (! empty($item['company_id'])) {
-                $syncData[$item['company_id']] = [
-                    // AQUÍ: El nombre de la columna debe ser EXACTO al de tu base de datos
-                    'participation_percentage' => $item['percentage'],
-                ];
-            }
-        }
+        // Transformamos el array para sync(): [id => ['participation_percentage' => valor]]
+        $syncData = collect($companies)->mapWithKeys(fn($item) => [
+            $item['company_id'] => ['participation_percentage' => $item['percentage']],
+        ])->toArray();
 
         $consortium->companies()->sync($syncData);
+    }
+
+    private function deleteLogo(?string $path): void
+    {
+        if ($path && Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
     }
 }

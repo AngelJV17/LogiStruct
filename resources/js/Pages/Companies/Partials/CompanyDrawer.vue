@@ -28,10 +28,14 @@ const photoPreview = ref(null);
 const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+        // 1. Previsualización local
         const reader = new FileReader();
         reader.onload = (e) => photoPreview.value = e.target.result;
         reader.readAsDataURL(file);
-        emit('updatePhoto', file);
+
+        // 2. ASIGNACIÓN DIRECTA AL FORMULARIO
+        // Esto asegura que el objeto 'form' del Index.vue se actualice
+        props.form.url_logo = file;
     }
 };
 
@@ -169,6 +173,30 @@ watch(() => props.show, (val) => {
                                 </div>
                             </div>
                         </div>
+
+                        <div class="space-y-4 pt-4">
+                            <h3 class="text-xs font-black text-indigo-600 uppercase tracking-widest border-b pb-2">
+                                4. Configuración Operativa
+                            </h3>
+
+                            <div class="flex items-start gap-3 p-2">
+                                <div class="flex items-center h-5">
+                                    <input id="issues_payment_order" v-model="form.issues_payment_order" type="checkbox"
+                                        class="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer" />
+                                </div>
+
+                                <div class="flex flex-col">
+                                    <label for="issues_payment_order"
+                                        class="text-sm font-bold text-gray-700 cursor-pointer">
+                                        Habilitar emisión de Órdenes de Pago
+                                    </label>
+                                    <p class="text-xs text-gray-500">
+                                        Permite que esta empresa sea seleccionada para generar pagos en el sistema.
+                                    </p>
+                                </div>
+                            </div>
+                            <InputError :message="form.errors.issues_payment_order" />
+                        </div>
                     </div>
 
                     <div class="border-t border-gray-100 px-8 py-6 bg-white shrink-0">
@@ -178,7 +206,7 @@ watch(() => props.show, (val) => {
                                 Cancelar
                             </button>
                             <PrimaryButton :disabled="form.processing" class="!px-10 !py-3 shadow-xl shadow-indigo-100">
-                                {{ editMode ? 'Guardar Cambios' : 'Finalizar Registro' }}
+                                {{ editMode ? 'Guardar Cambios' : 'Registrar Empresa' }}
                             </PrimaryButton>
                         </div>
                     </div>

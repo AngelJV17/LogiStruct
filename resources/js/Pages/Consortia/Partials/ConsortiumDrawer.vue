@@ -79,9 +79,17 @@ const removeCompanyRow = (index) => {
 const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+        // 1. Previsualización
         const reader = new FileReader();
         reader.onload = (e) => photoPreview.value = e.target.result;
         reader.readAsDataURL(file);
+
+        // 2. ASIGNACIÓN CLAVE:
+        // Vinculamos el archivo directamente al objeto reactivo de Inertia
+        props.form.url_logo = file;
+
+        // Mantenemos el emit por si el padre necesita reaccionar, 
+        // pero la línea de arriba es la que hace la magia para el envío.
         emit('updatePhoto', file);
     }
 };
@@ -250,10 +258,10 @@ watch(() => props.show, (val) => {
                                         class="mt-1 block w-full bg-gray-50/30 uppercase text-sm" />
                                 </div>
                                 <div class="col-span-2">
-                                    <InputLabel for="email" value="Correo Electrónico Institucional" />
-                                    <TextInput id="email" v-model="form.email" type="email"
+                                    <InputLabel for="representative_email" value="Correo Electrónico" />
+                                    <TextInput id="representative_email" v-model="form.representative_email" type="email"
                                         class="mt-1 block w-full bg-gray-50/30" placeholder="ejemplo@correo.com" />
-                                    <InputError :message="form.errors.email" />
+                                    <InputError :message="form.errors.representative_email" />
                                 </div>
                                 <div>
                                     <InputLabel for="representative_dni" value="DNI" />
@@ -278,7 +286,7 @@ watch(() => props.show, (val) => {
                             <PrimaryButton :disabled="isFormInvalid"
                                 :class="{ 'opacity-50 grayscale cursor-not-allowed': isFormInvalid }"
                                 class="!px-10 !py-3 shadow-xl shadow-indigo-100">
-                                {{ editMode ? 'Guardar Cambios' : 'Finalizar Registro' }}
+                                {{ editMode ? 'Guardar Cambios' : 'Registrar Consorcio' }}
                             </PrimaryButton>
                         </div>
                     </div>

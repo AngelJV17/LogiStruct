@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue';
-import { Head, router, useForm } from '@inertiajs/vue3';
+import { Head, router, useForm, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Pencil, Trash2, Contact, Building2, Plus } from 'lucide-vue-next';
 import Swal from 'sweetalert2';
@@ -17,6 +17,8 @@ const props = defineProps({
     companies: Object,
     filters: Object,
 });
+
+const page = usePage();
 
 // --- 1. ESTADOS ---
 const isDrawerOpen = ref(false);
@@ -38,8 +40,26 @@ const form = useForm({
     legal_representative: '',
     representative_dni: '',
     representative_phone: '',
-    issues_payment_order: false
+    issues_payment_order: false // <-- Asegúrate que empiece en false
 });
+
+// Watcher para mensajes Flash (SweetAlert centralizado)
+watch(() => page.props.flash, (flash) => {
+    if (flash?.message) {
+        Swal.fire({
+            icon: flash.type || 'success',
+            title: flash.type === 'error' ? '¡Atención!' : '¡Operación exitosa!',
+            text: flash.message,
+            timer: 3000,
+            timerProgressBar: true,
+            showConfirmButton: false,
+            customClass: { popup: 'rounded-[2rem]' }
+        }).then(() => {
+            // Limpiamos el mensaje para que no se repita
+            page.props.flash.message = null;
+        });
+    }
+}, { deep: true });
 
 // --- 3. WATCHERS (Filtros) ---
 watch([search, perPage], () => {
@@ -82,7 +102,9 @@ const showContact = (company) => {
 
 /** Envío de datos al backend */
 const handleSubmit = () => {
-    const url = editMode.value ? route('companies.update', form.id) : route('companies.store');
+    const url = editMode.value
+        ? route('companies.update', form.id)
+        : route('companies.store');
 
     // Transformación necesaria para manejar archivos con método PUT en Laravel
     form.transform((data) => ({
@@ -90,15 +112,10 @@ const handleSubmit = () => {
         _method: editMode.value ? 'PUT' : 'POST',
     })).post(url, {
         forceFormData: true,
+        preserveScroll: true,
         onSuccess: () => {
             isDrawerOpen.value = false;
-            Swal.fire({
-                icon: 'success',
-                title: 'Operación exitosa',
-                timer: 1500,
-                showConfirmButton: false,
-                customClass: { popup: 'rounded-[2rem]' }
-            });
+            form.reset();
         },
     });
 };
@@ -127,118 +144,122 @@ const deleteItem = (id) => {
     <Head title="Gestión de Empresas" />
 
     <AuthenticatedLayout>
-        <template #header>
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h2 class="font-black text-3xl text-slate-900 tracking-tight">Empresas</h2>
-                    <p class="text-sm text-slate-500 font-medium">Visualización y control de empresas.</p>
-                </div>
-                <PrimaryButton @click="openDrawer()"
-                    class="rounded-2xl h-12 px-6 bg-indigo-600 hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100 gap-2">
-                    <Plus :size="20" />
-                    <span class="font-bold tracking-tight">Nueva Empresa</span>
-                </PrimaryButton>
-            </div>
+        <template #header>Empresas</template>
+
+        <template #header-actions>
+            <PrimaryButton @click="openDrawer()"
+                class="rounded-lg h-10 px-4 bg-indigo-600 hover:bg-indigo-700 transition-all shadow-md gap-2">
+                <Plus :size="18" />
+                <span class="font-bold text-xs uppercase tracking-widest">Nueva Empresa</span>
+            </PrimaryButton>
         </template>
 
-        <div class="py-10">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+        <div class="space-y-4">
 
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <div
+                class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between gap-4">
+
+                <div class="flex-grow">
                     <TableFilters v-model="search" v-model:perPage="perPage" />
                 </div>
 
-                <div class="bg-white shadow-sm rounded-xl border border-gray-200 overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead class="bg-gray-200 text-xs font-bold text-gray-500 uppercase">
-                                <tr>
-                                    <th class="px-6 py-4">Información Fiscal</th>
-                                    <th class="px-6 py-4">Representación</th>
-                                    <th class="px-6 py-4 text-center">Estado OP</th>
-                                    <th class="px-6 py-4 text-right">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-gray-200">
-                                <tr v-for="co in companies.data" :key="co.id"
-                                    class="group transition-all duration-200 hover:bg-indigo-50/40 hover:shadow-[inset_4px_0_0_0_#4f46e5]">
+                <div
+                    class="hidden md:flex items-center gap-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest shrink-0 whitespace-nowrap">
+                    <span>Total Empresas: {{ companies.data.length }}</span>
+                </div>
+            </div>
 
-                                    <td class="px-6 py-4">
-                                        <div class="flex items-center gap-4">
+            <div class="bg-white shadow-sm rounded-xl border border-slate-200 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead
+                            class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            <tr>
+                                <th class="px-6 py-4">Información Fiscal</th>
+                                <th class="px-6 py-4">Representación</th>
+                                <th class="px-6 py-4 text-center">Estado OP</th>
+                                <th class="px-6 py-4 text-right">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100 text-sm">
+                            <tr v-for="co in companies.data" :key="co.id"
+                                class="group transition-all duration-200 hover:bg-slate-50/80">
+
+                                <td class="px-6 py-3">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                            class="h-10 w-10 rounded-lg border border-slate-200 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-sm group-hover:border-indigo-300 transition-colors">
+                                            <img v-if="co.url_logo" :src="`/storage/${co.url_logo}`"
+                                                class="h-full w-full object-cover" />
+                                            <Building2 v-else class="text-slate-300" :size="18" />
+                                        </div>
+                                        <div class="leading-tight">
                                             <div
-                                                class="h-12 w-12 rounded-xl border border-gray-100 bg-gray-50 flex items-center justify-center overflow-hidden shrink-0 shadow-sm group-hover:border-indigo-200">
-                                                <img v-if="co.url_logo" :src="`/storage/${co.url_logo}`"
-                                                    class="h-full w-full object-cover" />
-                                                <Building2 v-else class="text-gray-300" :size="20" />
+                                                class="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors uppercase text-xs">
+                                                {{ co.name }}
                                             </div>
-                                            <div>
-                                                <div
-                                                    class="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors uppercase">
-                                                    {{ co.name }}
-                                                </div>
-                                                <div class="text-xs text-gray-400 font-medium">
-                                                    RUC: {{ co.ruc || 'PENDIENTE' }}
-                                                </div>
+                                            <div class="text-[10px] text-slate-400 font-bold mt-1 tracking-wide">
+                                                RUC: {{ co.ruc || '---' }}
                                             </div>
                                         </div>
-                                    </td>
+                                    </div>
+                                </td>
 
-                                    <td class="px-6 py-4">
-                                        <div
-                                            :class="['text-sm font-semibold ', co.legal_representative ? 'text-gray-700' : 'text-gray-400 italic']">
-                                            {{ co.legal_representative || 'No asignado' }}
-                                        </div>
-                                        <div
-                                            :class="['text-xs font-semibold ', co.representative_phone ? 'text-gray-600' : 'text-gray-400 italic']">
-                                            {{ co.representative_phone || 'Teléfono pendiente' }}
-                                        </div>
-                                    </td>
-
-                                    <td class="px-6 py-4 text-center">
-                                        <span :class="[
-                                            'text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-tighter shadow-sm border',
-                                            co.issues_payment_order ? 'bg-green-50 text-green-600 border-green-100' : 'bg-gray-50 text-gray-600 border-gray-100'
-                                        ]">
-                                            {{ co.issues_payment_order ? 'Emite OP' : 'No Emite' }}
+                                <td class="px-6 py-3">
+                                    <div class="flex flex-col">
+                                        <span class="font-bold text-slate-700 text-xs">
+                                            {{ co.legal_representative || 'Sin asignar' }}
                                         </span>
-                                    </td>
+                                        <span class="text-[10px] text-slate-400 font-medium">
+                                            {{ co.representative_phone || 'S/T' }}
+                                        </span>
+                                    </div>
+                                </td>
 
-                                    <td class="px-6 py-4 text-right">
-                                        <div class="flex justify-end items-center gap-1">
-                                            <button @click="showContact(co)"
-                                                class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
-                                                title="Ver Ficha">
-                                                <Contact :size="18" />
-                                            </button>
-                                            <button @click="openDrawer(co)"
-                                                class="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
-                                                title="Editar">
-                                                <Pencil :size="18" />
-                                            </button>
-                                            <button @click="deleteItem(co.id)"
-                                                class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                                title="Eliminar">
-                                                <Trash2 :size="18" />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                                <td class="px-6 py-3 text-center">
+                                    <span :class="[
+                                        'text-[10px] px-2.5 py-1 rounded-md font-bold uppercase tracking-tight shadow-sm border',
+                                        co.issues_payment_order ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-500 border-slate-200'
+                                    ]">
+                                        {{ co.issues_payment_order ? 'Emite OP' : 'No Emite' }}
+                                    </span>
+                                </td>
 
-                    <EmptyState v-if="companies.data.length === 0" :search="search" />
+                                <td class="px-6 py-3 text-right">
+                                    <div
+                                        class="flex justify-end items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                        <button @click="showContact(co)"
+                                            class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                            title="Ver Detalle">
+                                            <Contact :size="16" />
+                                        </button>
+                                        <button @click="openDrawer(co)"
+                                            class="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
+                                            title="Editar">
+                                            <Pencil :size="16" />
+                                        </button>
+                                        <button @click="deleteItem(co.id)"
+                                            class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                                            title="Eliminar">
+                                            <Trash2 :size="16" />
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
 
-                    <div class="p-6 border-t border-gray-50 bg-gray-50/30">
-                        <Pagination :links="companies.links" />
-                    </div>
+                <EmptyState v-if="companies.data.length === 0" :search="search" />
+
+                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+                    <Pagination :links="companies.links" />
                 </div>
             </div>
         </div>
 
         <CompanyDrawer :show="isDrawerOpen" :edit-mode="editMode" :form="form" @close="isDrawerOpen = false"
             @submit="handleSubmit" />
-
         <CompanyDetailModal :show="isDetailModalOpen" :company="selectedCompany" @close="isDetailModalOpen = false" />
     </AuthenticatedLayout>
 </template>

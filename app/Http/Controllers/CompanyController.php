@@ -2,84 +2,98 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Company\StoreCompanyRequest;
+use App\Http\Requests\Company\SaveCompanyRequest;
 use App\Models\Company;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class CompanyController extends Controller
 {
+    private const STORAGE_PATH = 'companies_logos';
+
     public function index(Request $request)
     {
-        $companies = Company::query()
-    ->when($request->input('search'), function ($query, $search) {
-        $query->where('name', 'like', "%{$search}%")
-            ->orWhere('ruc', 'like', "%{$search}%");
-    }) // <-- Verifica que este paréntesis esté cerrado
-    ->latest()
-    ->paginate($request->input('perPage', 10))
-    ->withQueryString();
-
-return Inertia::render('Companies/Index', [
-    'companies' => $companies,
-    'filters'   => $request->only(['search', 'perPage']),
-]);
-
-    }
-
-    public function store(StoreCompanyRequest $request)
-    {
-        $data = $request->validated();
-
-        if ($request->hasFile('url_logo')) {
-            $data['url_logo'] = $request->file('url_logo')->store('companies_logos', 'public');
-        }
-
-        Company::create($data);
-        return redirect()->route('companies.index');
-    }
-
-    public function update(Request $request, Company $company)
-    {
-        $validated = $request->validate([
-            'ruc'                  => 'required|digits:11|unique:companies,ruc,' . $company->id,
-            'name'                 => 'required|string|max:255',
-            'email'                => 'nullable|email',
-            'phone'                => 'nullable|string',
-            'address'              => 'nullable|string',
-            'legal_representative' => 'nullable|string',
-            'representative_dni'   => 'nullable|digits:8',
-            'representative_phone' => 'nullable|string',
-            'issues_payment_order' => 'required|boolean',
-            'url_logo'             => 'nullable|image|max:2048',
+        return Inertia::render('Companies/Index', [
+            'companies' => Company::query()
+                ->when($request->search, fn($q, $s) =>
+                    $q->where('name', 'like', "%{$s}%")->orWhere('ruc', 'like', "%{$s}%")
+                )
+                ->latest()
+                ->paginate($request->perPage ?? 10)
+                ->withQueryString(),
+            'filters' => $request->only(['search', 'perPage']),
         ]);
+    }
 
-        // Lógica inteligente para el logo:
-        if ($request->hasFile('url_logo')) {
-            // Si el usuario subió un archivo nuevo, borramos el viejo y guardamos el nuevo
-            if ($company->url_logo) {
-                Storage::disk('public')->delete($company->url_logo);
+    public function store(SaveCompanyRequest $request)
+    {
+        try {
+            $data                         = $request->validated();
+            $data['issues_payment_order'] = $request->boolean('issues_payment_order');
+
+            if ($request->hasFile('url_logo')) {
+                $data['url_logo'] = $request->file('url_logo')->store(self::STORAGE_PATH, 'public');
             }
-            $validated['url_logo'] = $request->file('url_logo')->store('companies_logos', 'public');
-        } else {
-            // SI NO HAY ARCHIVO NUEVO: Quitamos el campo del array
-            // para que Laravel NO intente actualizarlo a null.
-            unset($validated['url_logo']);
+
+            Company::create($data);
+
+            return redirect()->route('companies.index')
+                ->with(['message' => 'Empresa registrada con éxito', 'type' => 'success']);
+
+        } catch (\Exception $e) {
+            Log::error("Error Store Company: {$e->getMessage()}");
+            return redirect()->back()->with(['message' => 'Error al registrar empresa', 'type' => 'error']);
         }
+    }
 
-        $company->update($validated);
+    public function update(SaveCompanyRequest $request, Company $company)
+    {
+        try {
+            $data                         = $request->validated();
+            $data['issues_payment_order'] = $request->boolean('issues_payment_order');
 
-        return redirect()->route('companies.index');
+            if ($request->hasFile('url_logo')) {
+                $this->deleteLogo($company->url_logo);
+                $data['url_logo'] = $request->file('url_logo')->store(self::STORAGE_PATH, 'public');
+            } else {
+                // Si no hay archivo nuevo, evitamos sobreescribir con el string de la URL
+                unset($data['url_logo']);
+            }
+
+            $company->update($data);
+
+            return redirect()->route('companies.index')
+                ->with(['message' => 'Empresa actualizada correctamente', 'type' => 'success']);
+
+        } catch (\Exception $e) {
+            Log::error("Error Update Company ID {$company->id}: {$e->getMessage()}");
+            return redirect()->back()->with(['message' => 'Error al actualizar empresa', 'type' => 'error']);
+        }
     }
 
     public function destroy(Company $company)
     {
-        if ($company->logo) {
-            Storage::disk('public')->delete($company->logo);
-        }
+        try {
+            $this->deleteLogo($company->url_logo);
+            $company->delete();
 
-        $company->delete();
-        return response()->json(null, 204);
+            return redirect()->route('companies.index')
+                ->with(['message' => 'Empresa eliminada', 'type' => 'warning']);
+        } catch (\Exception $e) {
+            Log::error("Error Delete Company ID {$company->id}: {$e->getMessage()}");
+            return redirect()->back()->with(['message' => 'No se pudo eliminar la empresa', 'type' => 'error']);
+        }
+    }
+
+    /**
+     * Helper privado para limpieza de archivos (Consistencia Senior)
+     */
+    private function deleteLogo(?string $path): void
+    {
+        if ($path && Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
     }
 }

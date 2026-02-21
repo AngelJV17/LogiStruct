@@ -18,7 +18,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 const props = defineProps({
     show: Boolean,
     project: Object,
-    form: Object, // Usamos el form que viene del Index
+    form: Object,
     types: Array,
     statuses: Array,
     departments: Array,
@@ -37,8 +37,17 @@ const fileInput = ref(null);
 // --- PROPIEDADES COMPUTADAS ---
 const editMode = computed(() => !!props.project);
 
-// --- FUNCIONES DE AYUDA ---
+// Lógica para mostrar qué código se generará (Solo visual)
+const autoCodePreview = computed(() => {
+    if (editMode.value) return props.form.project_code;
+    if (!props.form.type_id) return 'AUTO-GENERADO';
 
+    const selectedType = props.types.find(t => Number(t.id) === Number(props.form.type_id));
+    const prefix = selectedType ? selectedType.name.substring(0, 3).toUpperCase() : 'PROY';
+    return `${prefix}-${new Date().getFullYear()}-XXXX`;
+});
+
+// --- FUNCIONES DE AYUDA ---
 const currency = (val) => new Intl.NumberFormat('es-PE', {
     style: 'currency',
     currency: 'PEN'
@@ -52,7 +61,6 @@ const handlePhotoUpload = (e) => {
     }
 };
 
-// --- API UBIGEO ---
 const fetchProvinces = async (id) => {
     if (!id) return;
     const res = await axios.get(route('api.ubigeo.provinces', id));
@@ -75,7 +83,6 @@ const formatToInputDate = (dateStr) => {
 // --- SINCRONIZACIÓN DE DATOS ---
 watch(() => props.show, async (val) => {
     if (val && props.project) {
-        // Carga de datos al formulario
         props.form.id = props.project.id;
         props.form.project_code = props.project.project_code;
         props.form.project_name = props.project.project_name;
@@ -101,13 +108,11 @@ watch(() => props.show, async (val) => {
         props.form.cover_image = null;
         photoPreview.value = props.project.cover_url;
 
-        // Carga de Ubigeo anidado
         if (props.form.department_id) {
             await fetchProvinces(props.form.department_id);
             if (props.form.province_id) await fetchDistricts(props.form.province_id);
         }
     } else if (!val) {
-        // Limpieza al cerrar
         photoPreview.value = null;
         provinces.value = [];
         districts.value = [];
@@ -156,12 +161,14 @@ watch(() => props.show, async (val) => {
                                         required></textarea>
                                     <InputError :message="form.errors.project_name" class="mt-1" />
                                 </div>
+
                                 <div class="col-span-3">
-                                    <InputLabel for="project_code" value="Código CUI / Interno" />
-                                    <TextInput id="project_code" v-model="form.project_code"
-                                        class="mt-1 block w-full bg-gray-50/30 font-mono uppercase" required />
+                                    <InputLabel for="project_code" value="Código de Proyecto (Automático)" />
+                                    <TextInput id="project_code" :value="autoCodePreview" disabled
+                                        class="mt-1 block w-full bg-gray-100 font-mono uppercase text-gray-500 cursor-not-allowed" />
                                     <InputError :message="form.errors.project_code" class="mt-1" />
                                 </div>
+
                                 <div class="col-span-3">
                                     <InputLabel for="short_name" value="Nombre Corto" />
                                     <TextInput id="short_name" v-model="form.short_name"
@@ -291,7 +298,7 @@ watch(() => props.show, async (val) => {
                                         class="w-full border-gray-300 rounded-md text-sm">
                                         <option value="">Distrito</option>
                                         <option v-for="dist in districts" :key="dist.id" :value="dist.id">{{ dist.name
-                                            }}</option>
+                                        }}</option>
                                     </select>
                                     <InputError :message="form.errors.district_id" />
                                 </div>
@@ -331,6 +338,10 @@ watch(() => props.show, async (val) => {
                                 </div>
                             </div>
                         </div>
+                    </div>
+                    
+                    <div v-if="Object.keys(form.errors).length > 0" class="bg-red-100 text-red-600 p-4 rounded-lg">
+                        {{ form.errors }}
                     </div>
 
                     <div class="border-t border-gray-100 px-8 py-6 bg-white shrink-0">

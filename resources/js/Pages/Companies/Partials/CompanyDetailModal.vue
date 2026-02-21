@@ -15,7 +15,7 @@ defineEmits(['close']);
         <div class="p-6" v-if="company">
             <div class="flex items-center gap-4 mb-6 border-b pb-4">
                 <div class="bg-indigo-50 p-2 rounded-lg border border-indigo-100">
-                    <img v-if="company.logo_url" :src="company.logo_url"
+                    <img v-if="company.url_logo" :src="`/storage/${company.url_logo}`"
                         class="h-16 w-16 rounded-md object-cover shadow-sm">
                     <Briefcase v-else class="h-16 w-16 text-indigo-500 p-2" />
                 </div>

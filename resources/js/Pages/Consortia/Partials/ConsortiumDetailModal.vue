@@ -1,6 +1,9 @@
 <script setup>
 import Modal from '@/Components/Modal.vue';
-import { Briefcase, Mail, Phone, User, IdCard, Globe } from 'lucide-vue-next';
+import {
+    Briefcase, Mail, Phone, User,
+    IdCard, Building2, PieChart
+} from 'lucide-vue-next';
 
 defineProps({
     show: Boolean,
@@ -25,6 +28,32 @@ defineEmits(['close']);
                 </div>
             </div>
 
+            <div class="mb-6 space-y-3">
+                <p class="text-xs uppercase text-gray-400 font-bold flex items-center gap-2">
+                    <Building2 :size="14" /> Empresas Consorciadas
+                </p>
+                <div class="space-y-2">
+                    <div v-for="company in consortium.companies" :key="company.id"
+                        class="flex items-center justify-between p-2.5 bg-white border border-gray-100 rounded-xl shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-8 h-8 rounded-lg bg-gray-50 flex items-center justify-center overflow-hidden border border-gray-100">
+                                <img v-if="company.url_logo" :src="`/storage/${company.url_logo}`"
+                                    class="w-full h-full object-cover" />
+                                <Building2 v-else class="text-gray-400" :size="14" />
+                            </div>
+                            <span class="text-sm text-gray-700 font-medium truncate max-w-[180px]">{{ company.name
+                                }}</span>
+                        </div>
+                        <div
+                            class="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-700 rounded-lg border border-amber-100 font-bold text-xs">
+                            <PieChart :size="12" />
+                            {{ company.pivot?.participation_percentage }}%
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="space-y-4">
                 <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
                     <p class="text-xs uppercase text-gray-400 font-bold mb-3 flex items-center gap-2">
@@ -36,8 +65,9 @@ defineEmits(['close']);
                             <IdCard class="text-gray-400" :size="16" />
                             <p class="text-sm text-gray-700 font-semibold">
                                 {{ consortium.legal_representative || 'No registrado' }}
-                                <span class="block text-xs font-normal text-gray-500">DNI: {{
-                                    consortium.representative_dni || '---' }}</span>
+                                <span class="block text-xs font-normal text-gray-500">
+                                    DNI: {{ consortium.representative_dni || '---' }}
+                                </span>
                             </p>
                         </div>
 
@@ -45,18 +75,13 @@ defineEmits(['close']);
                             <Mail class="text-gray-400" :size="16" />
                             <p class="text-sm text-gray-700">{{ consortium.representative_email || 'Sin correo' }}</p>
                         </div>
-
-                        <div class="flex items-center gap-3">
-                            <Phone class="text-gray-400" :size="16" />
-                            <p class="text-sm text-gray-700">{{ consortium.representative_phone || 'Sin teléfono' }}</p>
-                        </div>
                     </div>
                 </div>
             </div>
 
             <div class="mt-6">
                 <button @click="$emit('close')"
-                    class="w-full bg-gray-800 text-white px-6 py-2.5 rounded-lg hover:bg-gray-700 transition font-medium">
+                    class="w-full bg-gray-800 text-white px-6 py-2.5 rounded-lg hover:bg-gray-700 transition font-medium uppercase text-xs tracking-wider">
                     Cerrar
                 </button>
             </div>
