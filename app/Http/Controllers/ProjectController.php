@@ -120,8 +120,9 @@ class ProjectController extends Controller
     private function getGlobalParams(string $group)
     {
         return GlobalParameter::where('group', $group)
-            ->where('level', 2)
-            ->select('id', 'name')
-            ->get();
+        ->where('level', 1) // Cambiado de 2 a 1
+        ->where('is_active', true)
+        ->select('id', 'name')
+        ->get();
     }
 }

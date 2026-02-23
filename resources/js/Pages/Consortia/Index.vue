@@ -154,110 +154,118 @@ const deleteItem = (id) => {
         </template>
 
         <div class="space-y-4">
-
             <div
                 class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-
                 <div class="flex-1">
                     <TableFilters v-model="search" v-model:perPage="perPage" />
                 </div>
-
                 <div
                     class="hidden md:flex items-center gap-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest shrink-0 whitespace-nowrap">
                     <span>Total Consorcios: {{ consortia.data.length }}</span>
                 </div>
-
             </div>
 
             <div class="bg-white shadow-sm rounded-xl border border-slate-200 overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead
-                            class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                            <tr>
-                                <th class="px-6 py-4">Información del Consorcio</th>
-                                <th class="px-6 py-4">Representante Legal</th>
-                                <th class="px-6 py-4 text-center">Composición / Socios</th>
-                                <th class="px-6 py-4 text-right">Acciones</th>
+                    <table class="w-full text-left border-separate border-spacing-y-3 px-4">
+                        <thead>
+                            <tr class="text-slate-500 text-[11px] font-bold uppercase tracking-[0.1em]">
+                                <th class="px-8 py-3">Información del Consorcio</th>
+                                <th class="px-6 py-3">Representante Legal</th>
+                                <th class="px-6 py-3 text-center">Composición / Socios</th>
+                                <th class="px-8 py-3 text-right">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100 text-sm">
+                        <tbody>
                             <tr v-for="c in consortia.data" :key="c.id"
-                                class="group transition-all duration-200 hover:bg-slate-50/80">
+                                class="group transition-all duration-300 ease-in-out">
 
-                                <td class="px-6 py-3">
-                                    <div class="flex items-center gap-3">
-                                        <div
-                                            class="h-10 w-10 rounded-lg border border-slate-200 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-sm group-hover:border-indigo-300 transition-colors">
-                                            <img v-if="c.url_logo" :src="`/storage/${c.url_logo}`"
-                                                class="h-full w-full object-cover" />
-                                            <Briefcase v-else class="text-slate-300" :size="18" />
-                                        </div>
-                                        <div class="leading-tight">
+                                <td colspan="4" class="p-0">
+                                    <div
+                                        class="relative flex items-center w-full bg-white border border-slate-100 rounded-2xl transition-all duration-300 
+                                                group-hover:border-indigo-300 group-hover:bg-indigo-50/40 group-hover:-translate-y-0.5
+                                                group-hover:shadow-[inset_4px_0_0_0_#6366f1,0_8px_20px_-6px_rgba(79,70,229,0.15)]">
+
+                                        <div class="w-1/3 px-8 py-5 flex items-center gap-4">
                                             <div
-                                                class="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors uppercase text-xs">
-                                                {{ c.name }}
+                                                class="h-12 w-12 rounded-xl border border-slate-100 bg-white flex items-center justify-center overflow-hidden shadow-sm transition-transform group-hover:scale-110 group-hover:border-indigo-100">
+                                                <img v-if="c.url_logo" :src="`/storage/${c.url_logo}`"
+                                                    class="h-full w-full object-cover" />
+                                                <Briefcase v-else class="text-slate-300" :size="20" />
                                             </div>
-                                            <div class="text-[10px] text-slate-400 font-bold mt-1 tracking-wide">
-                                                RUC: {{ c.ruc || 'PENDIENTE' }}
+                                            <div class="leading-tight">
+                                                <div
+                                                    class="font-black text-slate-800 uppercase text-xs tracking-tight transition-colors group-hover:text-indigo-900">
+                                                    {{ c.name }}
+                                                </div>
+                                                <div
+                                                    class="inline-flex items-center px-2 py-0.5 rounded bg-slate-100 text-[9px] font-bold text-slate-500 mt-2 uppercase transition-colors group-hover:bg-white group-hover:text-indigo-600">
+                                                    RUC: {{ c.ruc || 'Pendiente' }}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </td>
 
-                                <td class="px-6 py-3">
-                                    <div class="flex flex-col">
-                                        <span class="font-bold text-slate-700 text-xs">
-                                            {{ c.legal_representative || 'Sinasignar' }}
-                                        </span>
-                                        <span class="text-[10px] text-slate-400 font-medium truncate max-w-[180px]">{{
-                                            c.representative_email || 'S/E' }}</span>
-                                    </div>
-                                </td>
+                                        <div class="w-1/4 px-6 py-5">
+                                            <div class="flex flex-col">
+                                                <span
+                                                    class="font-bold text-slate-700 text-xs transition-colors group-hover:text-slate-900">
+                                                    {{ c.legal_representative || 'Sin asignar' }}
+                                                </span>
+                                                <span
+                                                    class="text-[10px] text-slate-400 font-medium mt-1 italic transition-colors group-hover:text-indigo-400">
+                                                    {{ c.representative_email || 'correo@ejemplo.com' }}
+                                                </span>
+                                            </div>
+                                        </div>
 
-                                <td class="px-6 py-3 text-center">
-                                    <div class="flex items-center justify-center gap-3">
-                                        <div class="flex -space-x-2 overflow-hidden">
-                                            <template v-for="company in c.companies.slice(0, 3)" :key="company.id">
-                                                <div class="inline-block h-7 w-7 rounded-full ring-2 ring-white bg-slate-100 overflow-hidden shadow-sm"
-                                                    :title="company.name">
-                                                    <img v-if="company.url_logo" :src="`/storage/${company.url_logo}`"
-                                                        class="h-full w-full object-cover" />
-                                                    <div v-else
-                                                        class="h-full w-full bg-indigo-50 flex items-center justify-center text-[8px] font-black text-indigo-500 uppercase">
-                                                        {{ company.name.substring(0, 2) }}
+                                        <div class="w-1/4 px-6 py-5">
+                                            <div class="flex flex-col items-center gap-2">
+                                                <div class="flex -space-x-3 overflow-hidden">
+                                                    <template v-for="company in c.companies.slice(0, 3)"
+                                                        :key="company.id">
+                                                        <div class="inline-block h-8 w-8 rounded-full ring-4 ring-white bg-slate-50 overflow-hidden shadow-sm hover:z-10 transition-transform hover:scale-110"
+                                                            :title="company.name">
+                                                            <img v-if="company.url_logo"
+                                                                :src="`/storage/${company.url_logo}`"
+                                                                class="h-full w-full object-cover" />
+                                                            <div v-else
+                                                                class="h-full w-full flex items-center justify-center text-[9px] font-black text-indigo-400 uppercase">
+                                                                {{ company.name.substring(0, 2) }}
+                                                            </div>
+                                                        </div>
+                                                    </template>
+                                                    <div v-if="c.companies.length > 3"
+                                                        class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-800 ring-4 ring-white text-[9px] font-black text-white shadow-sm">
+                                                        +{{ c.companies.length - 3 }}
                                                     </div>
                                                 </div>
-                                            </template>
-                                            <div v-if="c.companies.length > 3"
-                                                class="flex h-7 w-7 items-center justify-center rounded-full bg-slate-800 ring-2 ring-white text-[8px] font-black text-white shadow-sm">
-                                                +{{ c.companies.length - 3 }}
+                                                <span
+                                                    class="text-[9px] font-black text-slate-400 uppercase tracking-widest group-hover:text-indigo-500">
+                                                    {{ c.companies.length }} Miembros
+                                                </span>
                                             </div>
                                         </div>
-                                        <span class="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
-                                            {{ c.companies.length }} {{ c.companies.length === 1 ? 'Socio' : 'Socios' }}
-                                        </span>
-                                    </div>
-                                </td>
 
-                                <td class="px-6 py-3 text-right">
-                                    <div
-                                        class="flex justify-end items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                        <button @click="showContact(c)"
-                                            class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                                            title="Detalles">
-                                            <Contact :size="16" />
-                                        </button>
-                                        <button @click="openDrawer(c)"
-                                            class="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
-                                            title="Editar">
-                                            <Pencil :size="16" />
-                                        </button>
-                                        <button @click="deleteItem(c.id)"
-                                            class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                            title="Eliminar">
-                                            <Trash2 :size="16" />
-                                        </button>
+                                        <div class="w-1/4 px-8 py-5 flex justify-end gap-2">
+                                            <button @click="showContact(c)"
+                                                class="p-2.5 bg-white border border-slate-100 text-slate-400 rounded-xl hover:text-emerald-600 hover:border-emerald-200 hover:shadow-sm transition-all duration-200 active:scale-95"
+                                                title="Ver Detalles">
+                                                <Contact :size="16" />
+                                            </button>
+
+                                            <button @click="openDrawer(c)"
+                                                class="p-2.5 bg-white border border-slate-100 text-slate-400 rounded-xl hover:text-indigo-600 hover:border-indigo-200 hover:shadow-sm transition-all duration-200 active:scale-95"
+                                                title="Editar">
+                                                <Pencil :size="16" />
+                                            </button>
+
+                                            <button @click="deleteItem(c.id)"
+                                                class="p-2.5 bg-white border border-slate-100 text-slate-400 rounded-xl hover:text-red-600 hover:border-red-200 hover:shadow-sm transition-all duration-200 active:scale-95"
+                                                title="Eliminar">
+                                                <Trash2 :size="16" />
+                                            </button>
+                                        </div>
+                                        
                                     </div>
                                 </td>
                             </tr>

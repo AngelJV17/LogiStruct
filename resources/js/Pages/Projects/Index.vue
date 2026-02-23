@@ -182,14 +182,11 @@ const formatCurrency = (amount) => {
         </template>
 
         <div class="space-y-4">
-
             <div
-                class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between gap-4">
-
+                class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
                 <div class="flex-1">
                     <TableFilters v-model="search" v-model:perPage="perPage" />
                 </div>
-
                 <div
                     class="hidden md:flex items-center gap-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest shrink-0 whitespace-nowrap">
                     <span>Total Proyectos: {{ projects.meta.total }}</span>
@@ -198,97 +195,114 @@ const formatCurrency = (amount) => {
 
             <div class="bg-white shadow-sm rounded-xl border border-slate-200 overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
-                        <thead
-                            class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                            <tr>
-                                <th class="px-6 py-4">Información del Proyecto</th>
-                                <th class="px-6 py-4">Ubicación</th>
-                                <th class="px-6 py-4 text-center">Estado / Fechas</th>
-                                <th class="px-6 py-4 text-right">Presupuesto</th>
-                                <th class="px-6 py-4 text-right">Acciones</th>
+                    <table class="w-full text-left border-separate border-spacing-y-3 px-4">
+                        <thead>
+                            <tr class="text-slate-500 text-[11px] font-bold uppercase tracking-[0.1em]">
+                                <th class="px-8 py-3">Información del Proyecto</th>
+                                <th class="px-6 py-3">Ubicación</th>
+                                <th class="px-6 py-3 text-center">Estado / Fechas</th>
+                                <th class="px-6 py-3 text-right">Presupuesto</th>
+                                <th class="px-8 py-3 text-right">Acciones</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100 text-sm">
+                        <tbody>
                             <tr v-for="project in projects.data" :key="project.id"
-                                class="group transition-all duration-200 hover:bg-slate-50/80">
+                                class="group transition-all duration-300 ease-in-out">
 
-                                <td class="px-6 py-3">
-                                    <div class="flex items-center gap-3">
-                                        <div
-                                            class="h-10 w-10 rounded-lg border border-slate-200 bg-white flex items-center justify-center overflow-hidden shrink-0 shadow-sm group-hover:border-indigo-300 transition-colors">
-                                            <img v-if="project.cover_url" :src="project.cover_url"
-                                                class="h-full w-full object-cover" />
-                                            <LayoutGrid v-else class="text-slate-300" :size="18" />
-                                        </div>
-                                        <div class="leading-tight">
-                                            <div
-                                                class="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors uppercase text-xs truncate max-w-[250px]">
-                                                {{ project.short_name }}
-                                            </div>
-                                            <div class="text-[10px] text-slate-400 font-bold mt-1 tracking-wide">
-                                                ID: {{ project.project_code }}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
-
-                                <td class="px-6 py-3">
-                                    <div class="flex flex-col gap-0.5">
-                                        <div class="flex items-center gap-1.5 text-xs font-bold text-slate-700">
-                                            <MapPin :size="12" class="text-indigo-500" />
-                                            {{ project.location?.full_address || 'No definida' }}
-                                        </div>
-                                        <div class="text-[10px] text-slate-400 font-medium pl-4 truncate max-w-[150px]">
-                                            {{ project.location?.address_detail || '---' }}
-                                        </div>
-                                    </div>
-                                </td>
-
-                                <td class="px-6 py-3 text-center">
-                                    <div class="inline-flex flex-col items-center">
-                                        <span :class="[
-                                            'text-[9px] px-2 py-0.5 rounded-md font-black uppercase tracking-widest mb-1 border shadow-xs',
-                                            project.dates?.is_expired
-                                                ? 'bg-rose-50 text-rose-600 border-rose-100'
-                                                : 'bg-emerald-50 text-emerald-600 border-emerald-100'
-                                        ]">
-                                            {{ project.dates?.is_expired ? 'Finalizado' : 'En Ejecución' }}
-                                        </span>
-                                        <div class="flex items-center gap-1 text-[10px] text-slate-500 font-bold">
-                                            <Calendar :size="10" /> {{ project.dates?.start || 'S/F' }}
-                                        </div>
-                                    </div>
-                                </td>
-
-                                <td class="px-6 py-3 text-right">
-                                    <div class="flex flex-col leading-none">
-                                        <span
-                                            class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">PEN</span>
-                                        <span class="text-xs font-black text-slate-900 tracking-tight">
-                                            {{ formatCurrency(project.amounts?.contractual) }}
-                                        </span>
-                                    </div>
-                                </td>
-
-                                <td class="px-6 py-3 text-right">
+                                <td colspan="5" class="p-0">
                                     <div
-                                        class="flex justify-end items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                        <Link :href="route('projects.show', project.id)"
-                                            class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                                            title="Explorar">
-                                            <ExternalLink :size="16" />
-                                        </Link>
-                                        <button @click="openDrawer(project)"
-                                            class="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all"
-                                            title="Editar">
-                                            <Pencil :size="16" />
-                                        </button>
-                                        <button @click="deleteItem(project.id)"
-                                            class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                                            title="Eliminar">
-                                            <Trash2 :size="16" />
-                                        </button>
+                                        class="relative flex items-center w-full bg-white border border-slate-100 rounded-2xl transition-all duration-300 
+                                                group-hover:border-indigo-300 group-hover:bg-indigo-50/40 group-hover:-translate-y-0.5
+                                                group-hover:shadow-[inset_4px_0_0_0_#6366f1,0_8px_20px_-6px_rgba(79,70,229,0.15)]">
+
+                                        <div class="w-1/4 px-8 py-5 flex items-center gap-4">
+                                            <div class="relative shrink-0">
+                                                <div
+                                                    class="h-12 w-12 rounded-xl border border-slate-100 bg-white flex items-center justify-center overflow-hidden shadow-sm transition-transform group-hover:scale-110 group-hover:border-indigo-100">
+                                                    <img v-if="project.cover_url" :src="project.cover_url"
+                                                        class="h-full w-full object-cover" />
+                                                    <LayoutGrid v-else class="text-slate-300" :size="20" />
+                                                </div>
+                                            </div>
+                                            <div class="leading-tight truncate">
+                                                <div
+                                                    class="font-black text-slate-800 uppercase text-xs tracking-tight truncate group-hover:text-indigo-900 transition-colors">
+                                                    {{ project.short_name }}
+                                                </div>
+                                                <div
+                                                    class="inline-flex items-center px-2 py-0.5 rounded bg-slate-100 text-[9px] font-bold text-slate-500 mt-2 uppercase transition-colors group-hover:bg-white group-hover:text-indigo-600">
+                                                    ID: {{ project.project_code }}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="w-1/5 px-6 py-5">
+                                            <div class="flex flex-col gap-1">
+                                                <div
+                                                    class="flex items-center gap-1.5 text-xs font-bold text-slate-700 group-hover:text-slate-900 transition-colors">
+                                                    <MapPin :size="12" class="text-indigo-500" />
+                                                    <span class="truncate">
+                                                        {{ project.location?.full_address || 'No definida' }}
+                                                    </span>
+                                                </div>
+                                                <div
+                                                    class="text-[10px] text-slate-400 font-medium pl-4 truncate italic group-hover:text-indigo-400">
+                                                    {{ project.location?.address_detail || '---' }}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="w-1/5 px-6 py-5 text-center flex flex-col items-center gap-2">
+                                            <span :class="[
+                                                'text-[9px] px-2.5 py-1 rounded-lg font-black uppercase tracking-wider border transition-all',
+                                                project.dates?.is_expired
+                                                    ? 'bg-rose-50 text-rose-600 border-rose-100 group-hover:bg-rose-100'
+                                                    : 'bg-emerald-50 text-emerald-600 border-emerald-100 group-hover:bg-emerald-100'
+                                            ]">
+                                                {{ project.dates?.is_expired ? 'Finalizado' : 'En Ejecución' }}
+                                            </span>
+                                            <div
+                                                class="flex items-center gap-1.5 text-[10px] text-slate-500 font-bold bg-white px-2 py-0.5 rounded-md border border-slate-50 group-hover:border-indigo-100 transition-colors">
+                                                <Calendar :size="11"
+                                                    class="text-slate-400 group-hover:text-indigo-400" />
+                                                {{ project.dates?.start || 'S/F' }}
+                                            </div>
+                                        </div>
+
+                                        <div class="w-1/6 px-6 py-5 text-right">
+                                            <div class="flex flex-col items-end leading-none">
+                                                <span
+                                                    class="text-[8px] text-slate-400 font-black uppercase tracking-[0.2em] mb-1 group-hover:text-indigo-400">Total
+                                                    Contratado</span>
+                                                <div class="flex items-baseline gap-1">
+                                                    <span
+                                                        class="text-[10px] font-bold text-indigo-500 uppercase">S/</span>
+                                                    <span
+                                                        class="text-sm font-black text-slate-900 tracking-tighter group-hover:text-indigo-950 transition-colors">
+                                                        {{ formatCurrency(project.amounts?.contractual) }}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="w-1/5 px-8 py-5 flex justify-end gap-2">
+                                            <Link :href="route('projects.show', project.id)"
+                                                class="p-2.5 bg-white border border-slate-100 text-slate-400 rounded-xl hover:text-emerald-600 hover:border-emerald-200 hover:shadow-sm transition-all duration-200 active:scale-95 shadow-sm"
+                                                title="Explorar">
+                                                <ExternalLink :size="16" />
+                                            </Link>
+                                            <button @click="openDrawer(project)"
+                                                class="p-2.5 bg-white border border-slate-100 text-slate-400 rounded-xl hover:text-indigo-600 hover:border-indigo-200 hover:shadow-sm transition-all duration-200 active:scale-95 shadow-sm"
+                                                title="Editar">
+                                                <Pencil :size="16" />
+                                            </button>
+                                            <button @click="deleteItem(project.id)"
+                                                class="p-2.5 bg-white border border-slate-100 text-slate-400 rounded-xl hover:text-red-600 hover:border-red-200 hover:shadow-sm transition-all duration-200 active:scale-95 shadow-sm"
+                                                title="Eliminar">
+                                                <Trash2 :size="16" />
+                                            </button>
+                                        </div>
+
                                     </div>
                                 </td>
                             </tr>

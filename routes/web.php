@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\CompanyController;
 use App\Http\Controllers\ConsortiumController;
+use App\Http\Controllers\GlobalParameterController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Models\UbigeoPeruDistrict;
@@ -58,6 +59,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // CRUD de Proyectos (Resource)
     Route::resource('projects', ProjectController::class);
+    
+    // CRUD de Parametros (Resource)
+    Route::resource('parameters', GlobalParameterController::class);
 });
 
 

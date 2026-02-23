@@ -13,20 +13,17 @@ class GlobalParameter extends Model
     protected $fillable = ['group', 'name', 'description', 'parent_id', 'level', 'is_active'];
 
     // Relación para obtener el padre
-    public function parent(): BelongsTo
-    {
+    public function parent() {
         return $this->belongsTo(GlobalParameter::class, 'parent_id');
     }
 
-    // Relación para obtener los hijos (subcategorías)
-    public function children(): HasMany
-    {
-        return $this->hasMany(GlobalParameter::class, 'parent_id')->orderBy('name');
+    // Relación para obtener los hijos (sub-parámetros)
+    public function children() {
+        return $this->hasMany(GlobalParameter::class, 'parent_id');
     }
 
-    // Scope para filtrar por grupo (ej: PROJECT_TYPE)
-    public function scopeByGroup($query, $group)
-    {
-        return $query->where('group', $group)->where('is_active', true);
+    // Scope para filtrar por grupo fácilmente
+    public function scopeByGroup($query, $group) {
+        return $query->where('group', $group);
     }
 }

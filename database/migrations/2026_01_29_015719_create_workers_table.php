@@ -13,31 +13,39 @@ return new class extends Migration
     {
         Schema::create('workers', function (Blueprint $table) {
             $table->id();
-            $table->uuid('uuid')->unique(); // Para el QR único
-            $table->string('dni', 15)->unique();
+            $table->uuid('uuid')->unique(); // Indispensable para el QR
+
+            // Identificación
+            $table->foreignId('document_type_id')->constrained('global_parameters');
+            $table->string('document_number', 20)->unique();
+
+            // Nombres separados (Vital para planillas)
             $table->string('first_name');
-            $table->string('last_name');
+            $table->string('last_name_paternal');
+            $table->string('last_name_maternal');
+
+            // Datos Personales
             $table->date('birth_date')->nullable();
-            $table->string('phone')->nullable();
+            $table->foreignId('gender_id')->nullable()->constrained('global_parameters');
+            $table->string('phone', 20)->nullable();
             $table->string('email')->nullable();
+            $table->string('address')->nullable();
 
-            // Clasificación (Obrero, Especialista, Oficina) -> global_parameters
-            $table->foreignId('worker_type_id')->constrained('global_parameters');
+            // Clasificación y Cargo
+            $table->foreignId('worker_type_id')->constrained('global_parameters'); // Obrero, Oficina, etc.
+            $table->foreignId('position_id')->constrained('global_parameters');    // Maestro, Operario, etc.
 
-            // Cargo Específico (Maestro, Residente, Contador) -> global_parameters
-            $table->foreignId('position_id')->constrained('global_parameters');
-
-            // Asignación Laboral
-            // Si project_id es null, se entiende que es de Oficina Central
+            // Relación con el lugar de trabajo y empleador
             $table->foreignId('project_id')->nullable()->constrained()->onDelete('set null');
+            $table->foreignId('company_id')->constrained(); // Empresa del consorcio que lo contrata
 
-            // Empresa que lo contrata (Empresa A siempre, o la que paga)
-            $table->foreignId('company_id')->constrained();
-
-            // Datos de Pago
+            // Estructura Salarial
             $table->decimal('daily_salary', 10, 2)->default(0);
-            $table->decimal('monthly_salary', 10, 2)->default(0); // Para especialistas/oficina
+            $table->decimal('monthly_salary', 10, 2)->default(0);
+            $table->foreignId('payment_type_id')->nullable()->constrained('global_parameters'); // Destajo, Jornal, Mensual
 
+            // Control y Auditoría
+            $table->string('photo_path')->nullable(); // Para el carnet/QR
             $table->boolean('is_active')->default(true);
             $table->timestamps();
             $table->softDeletes();

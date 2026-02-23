@@ -1,9 +1,6 @@
 <?php
 namespace Database\Seeders;
 
-use App\Models\Company;
-use App\Models\GlobalParameter;
-use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -16,7 +13,12 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $this->call([
+            GlobalParameterSeeder::class,
+            // Aquí llamarás a los otros seeders después
+        ]);
+
+        /* // User::factory(10)->create();
 
         // 1. Crear Grupos Raíz en Global Parameters
         $workerType    = GlobalParameter::create(['group' => 'ROOT', 'name' => 'TIPO TRABAJADOR', 'level' => 1]);
@@ -59,6 +61,6 @@ class DatabaseSeeder extends Seeder
         User::factory()->create([
             'name'  => 'Admin LogiStruct',
             'email' => 'admin@logistruct.com',
-        ]);
+        ]); */
     }
 }
