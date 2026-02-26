@@ -13,13 +13,13 @@ return new class extends Migration
     {
         Schema::create('workers', function (Blueprint $table) {
             $table->id();
-            $table->uuid('uuid')->unique(); // Indispensable para el QR
+            $table->uuid('uuid')->unique(); 
 
-            // Identificación
+            // Identificación (Usa Global Parameters)
             $table->foreignId('document_type_id')->constrained('global_parameters');
             $table->string('document_number', 20)->unique();
 
-            // Nombres separados (Vital para planillas)
+            // Nombres
             $table->string('first_name');
             $table->string('last_name_paternal');
             $table->string('last_name_maternal');
@@ -31,21 +31,29 @@ return new class extends Migration
             $table->string('email')->nullable();
             $table->string('address')->nullable();
 
-            // Clasificación y Cargo
-            $table->foreignId('worker_type_id')->constrained('global_parameters'); // Obrero, Oficina, etc.
-            $table->foreignId('position_id')->constrained('global_parameters');    // Maestro, Operario, etc.
+            // Clasificación Laboral
+            $table->foreignId('worker_type_id')->constrained('global_parameters'); 
+            $table->foreignId('position_id')->constrained('positions'); // Nueva tabla independiente
 
-            // Relación con el lugar de trabajo y empleador
+            // Relación con lugar de trabajo y empleador
             $table->foreignId('project_id')->nullable()->constrained()->onDelete('set null');
-            $table->foreignId('company_id')->constrained(); // Empresa del consorcio que lo contrata
+            $table->foreignId('company_id')->constrained(); 
 
-            // Estructura Salarial
+            // Estructura Salarial y Pago
             $table->decimal('daily_salary', 10, 2)->default(0);
             $table->decimal('monthly_salary', 10, 2)->default(0);
-            $table->foreignId('payment_type_id')->nullable()->constrained('global_parameters'); // Destajo, Jornal, Mensual
+            $table->foreignId('payment_type_id')->nullable()->constrained('global_parameters');
 
-            // Control y Auditoría
-            $table->string('photo_path')->nullable(); // Para el carnet/QR
+            // Información Bancaria y Previsional (Tablas Independientes)
+            $table->foreignId('bank_id')->nullable()->constrained('banks');
+            $table->foreignId('pension_system_id')->nullable()->constrained('pension_systems');
+            $table->string('bank_account', 30)->nullable();
+            $table->string('cci', 30)->nullable();
+            $table->string('cuspp', 20)->nullable(); // Código único de AFP
+            
+            // Auditoría y Control
+            $table->date('hire_date')->nullable();
+            $table->string('photo_path')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
             $table->softDeletes();

@@ -5,6 +5,7 @@ use App\Http\Controllers\ConsortiumController;
 use App\Http\Controllers\GlobalParameterController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\WorkerController;
 use App\Models\UbigeoPeruDistrict;
 use App\Models\UbigeoPeruProvince;
 use Illuminate\Foundation\Application;
@@ -62,6 +63,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // CRUD de Parametros (Resource)
     Route::resource('parameters', GlobalParameterController::class);
+    
+    // CRUD de Trabajadores (Resource)
+    Route::resource('workers', WorkerController::class);
 });
 
 

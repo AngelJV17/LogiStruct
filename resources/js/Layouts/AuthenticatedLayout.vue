@@ -4,9 +4,21 @@ import { Link } from '@inertiajs/vue3';
 import ApplicationLogo from '@/Components/ApplicationLogo.vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
+// Importación de iconos Lucide
+import {
+    LayoutGrid,
+    HardHat,
+    Users,
+    Building2,
+    Network,
+    Settings2,
+    ChevronLeft,
+    Menu,
+    X
+} from 'lucide-vue-next';
 
 const isCollapsed = ref(false);
-const isMobileMenuOpen = ref(false); // Nuevo estado para móviles
+const isMobileMenuOpen = ref(false);
 
 const navLinkClasses = (active) => [
     'flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative',
@@ -31,6 +43,7 @@ const closeMobileMenu = () => {
             isMobileMenuOpen ? 'translate-x-0 w-64' : '-translate-x-full lg:translate-x-0'
         ]"
             class="fixed inset-y-0 left-0 lg:static flex flex-col bg-white border-r border-slate-200 transition-all duration-300 ease-in-out shrink-0 z-50 overflow-hidden">
+
             <div class="h-16 flex items-center px-6 border-b border-slate-100 bg-white shrink-0 justify-between">
                 <Link :href="route('dashboard')" class="flex items-center gap-3" @click="closeMobileMenu">
                     <ApplicationLogo class="h-8 w-8 shrink-0 fill-current text-indigo-600" />
@@ -38,10 +51,7 @@ const closeMobileMenu = () => {
                         class="font-black text-slate-800 tracking-tight text-xl">SIS-CORP</span>
                 </Link>
                 <button @click="closeMobileMenu" class="lg:hidden p-2 text-slate-400">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+                    <X :size="24" />
                 </button>
             </div>
 
@@ -52,22 +62,23 @@ const closeMobileMenu = () => {
 
                     <Link :href="route('dashboard')" :class="navLinkClasses(route().current('dashboard'))"
                         @click="closeMobileMenu">
-                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                        </svg>
+                        <LayoutGrid :size="20" />
                         <span v-if="!isCollapsed || isMobileMenuOpen"
                             class="text-sm font-semibold whitespace-nowrap">Dashboard</span>
                     </Link>
 
                     <Link :href="route('projects.index')" :class="navLinkClasses(route().current('projects.*'))"
                         @click="closeMobileMenu">
-                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                        </svg>
+                        <HardHat :size="20" />
                         <span v-if="!isCollapsed || isMobileMenuOpen"
                             class="text-sm font-semibold whitespace-nowrap">Proyectos</span>
+                    </Link>
+
+                    <Link :href="route('workers.index')" :class="navLinkClasses(route().current('workers.*'))"
+                        @click="closeMobileMenu">
+                        <Users :size="20" />
+                        <span v-if="!isCollapsed || isMobileMenuOpen"
+                            class="text-sm font-semibold whitespace-nowrap">Trabajadores</span>
                     </Link>
                 </div>
 
@@ -77,20 +88,14 @@ const closeMobileMenu = () => {
 
                     <Link :href="route('companies.index')" :class="navLinkClasses(route().current('companies.*'))"
                         @click="closeMobileMenu">
-                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
+                        <Building2 :size="20" />
                         <span v-if="!isCollapsed || isMobileMenuOpen"
                             class="text-sm font-semibold whitespace-nowrap">Empresas</span>
                     </Link>
 
                     <Link :href="route('consortia.index')" :class="navLinkClasses(route().current('consortia.*'))"
                         @click="closeMobileMenu">
-                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                        </svg>
+                        <Network :size="20" />
                         <span v-if="!isCollapsed || isMobileMenuOpen"
                             class="text-sm font-semibold whitespace-nowrap">Consorcios</span>
                     </Link>
@@ -103,12 +108,7 @@ const closeMobileMenu = () => {
 
                     <Link :href="route('parameters.index')" :class="navLinkClasses(route().current('parameters.*'))"
                         @click="closeMobileMenu">
-                        <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
+                        <Settings2 :size="20" />
                         <span v-if="!isCollapsed || isMobileMenuOpen"
                             class="text-sm font-semibold whitespace-nowrap">Parámetros</span>
                     </Link>
@@ -119,11 +119,8 @@ const closeMobileMenu = () => {
                 class="hidden lg:flex h-16 border-t border-slate-100 bg-slate-50/50 items-center justify-center shrink-0 absolute bottom-0 w-full left-0">
                 <button @click="isCollapsed = !isCollapsed"
                     class="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-indigo-600 hover:border-indigo-200 transition-all duration-300">
-                    <svg :class="{ 'rotate-180': isCollapsed }" class="w-4 h-4 transition-transform duration-500"
-                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                    </svg>
+                    <ChevronLeft :class="{ 'rotate-180': isCollapsed }"
+                        class="w-4 h-4 transition-transform duration-500" />
                 </button>
             </div>
         </aside>
@@ -131,16 +128,11 @@ const closeMobileMenu = () => {
         <div class="flex-1 flex flex-col min-w-0">
             <header
                 class="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 lg:px-8 shrink-0 sticky top-0 z-20">
-
                 <div class="flex items-center gap-4">
                     <button @click="isMobileMenuOpen = true"
                         class="lg:hidden p-2 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 6h16M4 12h16M4 18h16" />
-                        </svg>
+                        <Menu :size="24" />
                     </button>
-
                     <div class="flex flex-col leading-tight">
                         <h1
                             class="text-slate-800 font-black text-xs sm:text-sm uppercase tracking-widest truncate max-w-[150px] sm:max-w-none">
@@ -153,7 +145,6 @@ const closeMobileMenu = () => {
                     <div class="hidden sm:block">
                         <slot name="header-actions" />
                     </div>
-
                     <div class="hidden sm:block h-6 w-[1px] bg-slate-200"></div>
 
                     <Dropdown align="right" width="48">

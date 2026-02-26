@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             GlobalParameterSeeder::class,
+            PayrollMasterSeeder::class,
             // Aquí llamarás a los otros seeders después
         ]);
 
